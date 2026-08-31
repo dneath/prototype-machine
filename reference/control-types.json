@@ -1,0 +1,185 @@
+{
+  "$comment": "Machine-readable catalogue for prototype-machine 0.1.0. Human docs: ../reference/api.md",
+  "version": "0.1.0",
+  "kinds": {
+    "machine": {
+      "description": "A journey. One state is current; each state writes a whole tuple of context via `assign`. Use when moving one value alone would produce a state the product cannot be in.",
+      "keys": {
+        "initial": {
+          "type": "string",
+          "required": true,
+          "description": "Starting state id. Must be a key of `states`."
+        },
+        "states": {
+          "type": "Record<string, {label?, note?, assign?}>",
+          "required": true,
+          "description": "`assign` is the tuple this state writes. `note` is the tooltip and is quoted in the agent report."
+        },
+        "transitions": {
+          "type": "Record<string, string[]>",
+          "required": false,
+          "description": "Legal moves as from -> to[]. Omit the key entirely for fully connected; supply `{a: []}` for a deliberate dead end."
+        },
+        "label": {
+          "type": "string",
+          "required": false
+        },
+        "param": {
+          "type": "string",
+          "required": false,
+          "description": "Query-string key. Defaults to the id."
+        },
+        "when": {
+          "type": "(env: Env) => boolean",
+          "required": false
+        },
+        "hidden": {
+          "type": "boolean",
+          "required": false
+        }
+      },
+      "example": "journey: { label: 'Get connected', initial: 'firstRun', states: { firstRun: { assign: { step: 1, keyIssued: false } }, keyMade: { assign: { step: 2, keyIssued: true } } }, transitions: { firstRun: ['keyMade'], keyMade: ['firstRun'] } }"
+    }
+  },
+  "commonFieldKeys": {
+    "default": {
+      "required": true,
+      "description": "Required on every field. Also what a URL omits when the value matches."
+    },
+    "label": {
+      "required": false
+    },
+    "note": {
+      "required": false,
+      "description": "Tooltip text."
+    },
+    "hidden": {
+      "required": false,
+      "description": "Kept in context, URL and storage; hidden from the panel."
+    },
+    "param": {
+      "required": false,
+      "description": "Query-string key. Defaults to the id."
+    },
+    "when": {
+      "required": false,
+      "description": "(env) => boolean. Hides the control where it is meaningless."
+    }
+  },
+  "fieldTypes": {
+    "boolean": {
+      "value": "boolean",
+      "control": "Two pills",
+      "keys": {
+        "trueLabel": "string",
+        "falseLabel": "string",
+        "dom": "{attribute, target?}"
+      },
+      "example": "hasEvents: { type: 'boolean', label: 'Guardrail events', default: true, trueLabel: 'Some', falseLabel: 'None' }",
+      "urlEncoding": "1 / 0 (also accepts true / false)"
+    },
+    "enum": {
+      "value": "literal union of the option values",
+      "control": "Pills, or a <select> once there are more than 6 options",
+      "keys": {
+        "options": "Array<string | {value, label?, note?}>",
+        "control": "'pills' | 'select'",
+        "dom": "{attribute, target?}"
+      },
+      "example": "density: { type: 'enum', label: 'Density', default: 'comfortable', options: ['comfortable', 'compact'], dom: { attribute: 'data-density' } }",
+      "urlEncoding": "the option value verbatim",
+      "validation": "`default` must be one of `options`, or compile throws."
+    },
+    "number": {
+      "value": "number",
+      "control": "Number input by default; a slider with control: 'range'",
+      "keys": {
+        "min": "number",
+        "max": "number",
+        "step": "number",
+        "control": "'stepper' | 'range'"
+      },
+      "example": "seats: { type: 'number', label: 'Seats', default: 12, min: 0, max: 500 }",
+      "urlEncoding": "decimal string; values outside min/max are dropped"
+    },
+    "string": {
+      "value": "string",
+      "control": "Text input",
+      "keys": {
+        "placeholder": "string"
+      },
+      "example": "chosenTool: { type: 'string', default: 'opencode', hidden: true }",
+      "urlEncoding": "verbatim"
+    },
+    "date": {
+      "value": "string | null",
+      "control": "datetime-local input; stored as an ISO string in UTC",
+      "keys": {},
+      "example": "expiresAt: { type: 'date', label: 'Expires', default: null }",
+      "urlEncoding": "ISO string, or empty for null"
+    }
+  },
+  "derive": {
+    "description": "Computed from context, never stored and never in a URL. Use whenever a value follows from another rather than varying on its own.",
+    "signature": "Record<string, (ctx) => value>",
+    "example": "hasTraffic: (ctx) => ctx.journey === 'active'",
+    "note": "`ctx` contains machine cursors, assigned tuples and fields, but not other derived values."
+  },
+  "actions": {
+    "description": "Buttons at the foot of the panel and entries in the palette.",
+    "keys": {
+      "id": "string",
+      "label": "string",
+      "title": "string?",
+      "when": "(env) => boolean",
+      "run": "(api) => void"
+    },
+    "api": [
+      "set",
+      "go",
+      "reset",
+      "navigate",
+      "get"
+    ],
+    "example": "{ id: 'restart', label: 'Restart scenario', run: (api) => { api.reset(); api.navigate('/signin') } }"
+  },
+  "selectThreshold": 6,
+  "reservedContextNames": [
+    "set",
+    "go",
+    "can",
+    "movesFrom",
+    "reset",
+    "undo",
+    "redo",
+    "canUndo",
+    "canRedo",
+    "jump",
+    "history",
+    "link",
+    "markdown",
+    "copy",
+    "snapshot",
+    "machine",
+    "env",
+    "navigate",
+    "open",
+    "setOpen",
+    "paletteOpen",
+    "setPaletteOpen",
+    "hydrated",
+    "enabled"
+  ],
+  "precedence": [
+    "defaults",
+    "localStorage",
+    "URL",
+    "session edits"
+  ],
+  "keyboard": {
+    "mod+.": "toggle the panel",
+    "mod+shift+p": "open the scenario palette",
+    "Escape": "close the panel or palette",
+    "mod+z / mod+shift+z": "undo / redo, only while the panel has focus"
+  }
+}
