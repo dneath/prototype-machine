@@ -25,18 +25,4 @@ export {
   toSearch,
   writeStorage,
 } from "./serialize"
-export {
-  at,
-  canRedo,
-  canUndo,
-  describe,
-  initHistory,
-  push,
-  redo,
-  sameSnapshot,
-  undo,
-  DEFAULT_LIMIT,
-  type History,
-  type HistoryEntry,
-} from "./history"
-export { copyText, toMarkdown, type ReportOptions } from "./report"
+export { layout, type Cell, type CellKind, type Figure } from "./diagram"

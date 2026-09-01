@@ -87,6 +87,37 @@ export const scenario = defineMachine({
         directory: { label: "Directory down" },
       },
     },
+    /* DELIBERATELY AWKWARD, and only on one route. Nine states, long labels
+       and a dense transition map — the case that shows where the diagram's
+       edge routing gives up and falls back to listing moves as text. Kept out
+       of the way because it is a test fixture, not a model worth copying. */
+    review: {
+      label: "Review pipeline",
+      initial: "drafting",
+      when: (env) => env.path === "/guardrails",
+      states: {
+        drafting: { label: "Drafting the request" },
+        submitted: { label: "Submitted for review" },
+        triaged: { label: "Triaged by an admin" },
+        needsInfo: { label: "Waiting on more info" },
+        secondOpinion: { label: "Escalated for a second opinion" },
+        approved: { label: "Approved with conditions" },
+        rejected: { label: "Rejected, appealable" },
+        appealed: { label: "Under appeal" },
+        closed: { label: "Closed" },
+      },
+      transitions: {
+        drafting: ["submitted"],
+        submitted: ["triaged", "needsInfo", "drafting"],
+        triaged: ["approved", "rejected", "secondOpinion", "needsInfo"],
+        needsInfo: ["submitted", "closed"],
+        secondOpinion: ["approved", "rejected"],
+        approved: ["closed"],
+        rejected: ["appealed", "closed"],
+        appealed: ["triaged", "closed"],
+        closed: [],
+      },
+    },
   },
 
   fields: {

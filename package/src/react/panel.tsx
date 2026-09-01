@@ -5,9 +5,10 @@ import * as React from "react"
 import { visible } from "../core/machine"
 import { type ActionApi } from "../core/schema"
 import { FieldRow, MachineRow } from "./controls"
-import { CheckIcon, CloseIcon, CopyIcon, GearIcon, RedoIcon, UndoIcon } from "./icons"
-import { formatBinding, isTypingTarget, matches, parseBinding, useHotkey } from "./hotkeys"
-import { ScenarioPalette } from "./palette"
+import { CloseIcon, DiagramIcon, NodesIcon } from "./icons"
+import { ScenarioDiagram } from "./diagram"
+import { useDrag } from "./drag"
+import { formatBinding, useHotkey } from "./hotkeys"
 import { useScenario } from "./use-scenario"
 import { injectStyles } from "./styles"
 
@@ -26,18 +27,22 @@ export interface ScenarioPanelProps {
   zIndex?: number
   /** Toggle the panel. Default "mod+.". Pass null to unbind. */
   hotkey?: string | null
-  /** Open the scenario palette. Default "mod+shift+p". Pass null to unbind. */
-  paletteHotkey?: string | null
+  /**
+   * Open the state diagram. Unbound by default — the panel already owns one
+   * global key and a dev tool should not quietly claim a second.
+   */
+  diagramHotkey?: string | null
+  /**
+   * Let the panel be dragged anywhere. `position` stays the corner it starts
+   * in. Default true.
+   */
+  draggable?: boolean
   /**
    * A CSS custom property to set on the document element while the controls are
    * mounted, so the host can push its own corner UI clear of them.
    * `{ name: "--toast-inset-bottom", value: "4.5rem" }`.
    */
   inset?: { name: string; value: string }
-  /** Show the session's undo history. Default true. */
-  showHistory?: boolean
-  /** Called with the markdown whenever the copy button is used. */
-  onCopy?: (markdown: string) => void
   /** Override the dev-only default. */
   enabled?: boolean
   /** Rendered at the foot of the panel — a theme switch, a link, whatever. */
@@ -56,19 +61,19 @@ export function ScenarioPanel({
   title = "Prototype controls",
   zIndex = 690,
   hotkey = "mod+.",
-  paletteHotkey = "mod+shift+p",
+  diagramHotkey = null,
+  draggable = true,
   inset,
-  showHistory = true,
-  onCopy,
   enabled,
   children,
 }: ScenarioPanelProps) {
   const p = useScenario()
   const active = enabled ?? p.enabled
 
-  const [copied, setCopied] = React.useState(false)
   const panelRef = React.useRef<HTMLDivElement>(null)
   const launcherRef = React.useRef<HTMLButtonElement>(null)
+  /* Whichever of the two is mounted right now is the thing being positioned. */
+  const movingRef = (p.open ? panelRef : launcherRef) as React.RefObject<HTMLElement | null>
   /* So closing returns focus where it came from rather than to <body>, which
      is where a keyboard user would otherwise have to start over. */
   const restoreFocus = React.useRef(false)
@@ -76,7 +81,39 @@ export function ScenarioPanel({
   injectStyles()
 
   useHotkey(hotkey, () => p.setOpen(!p.open), active)
-  useHotkey(paletteHotkey, () => p.setPaletteOpen(true), active)
+  useHotkey(diagramHotkey, () => p.setDiagramOpen(!p.diagramOpen), active)
+
+  const drag = useDrag({
+    storageKey: p.storageKey,
+    enabled: active && draggable,
+    elementRef: movingRef,
+  })
+
+  /* Three ways the panel can be positioned, and only one of them is inline.
+     A corner placement is rendered by the SAME `pm-<corner>` class as the
+     default, which is why a snapped panel stays put through a resize with no
+     JavaScript. A free placement has to cancel that class's anchors, or the
+     two compete and the panel jumps. */
+  const anchored =
+    drag.placement === null
+      ? position
+      : drag.placement.kind === "corner"
+        ? drag.placement.corner
+        : null
+
+  const offset =
+    drag.placement && drag.placement.kind === "free"
+      ? {
+          top: drag.placement.y,
+          left: drag.placement.x,
+          right: "auto" as const,
+          bottom: "auto" as const,
+        }
+      : null
+
+  const corner = anchored ? ` pm-${anchored}` : ""
+  const dragClass =
+    (drag.dragging ? " pm-dragging" : "") + (drag.settling ? " pm-settling" : "")
 
   React.useEffect(() => {
     if (!active || !inset || typeof document === "undefined") return
@@ -87,17 +124,12 @@ export function ScenarioPanel({
     }
   }, [active, inset])
 
-  React.useEffect(() => {
-    if (!copied) return
-    const id = window.setTimeout(() => setCopied(false), 1600)
-    return () => window.clearTimeout(id)
-  }, [copied])
-
   /* Escape and click-outside, which the hand-rolled version of this panel
-     always forgets. Escape only closes the panel when the palette is not up —
-     the palette owns Escape while it is open. */
+     always forgets. The diagram owns both while it is open: a click on a node
+     in the overlay is not a click "outside the panel" in any sense the
+     reviewer means. */
   React.useEffect(() => {
-    if (!active || !p.open || p.paletteOpen || typeof document === "undefined") return
+    if (!active || !p.open || p.diagramOpen || typeof document === "undefined") return
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !event.defaultPrevented) {
@@ -118,7 +150,7 @@ export function ScenarioPanel({
       document.removeEventListener("keydown", onKeyDown)
       document.removeEventListener("pointerdown", onPointerDown, true)
     }
-  }, [active, p, p.open, p.paletteOpen])
+  }, [active, p, p.open, p.diagramOpen])
 
   React.useEffect(() => {
     if (p.open || !restoreFocus.current) return
@@ -136,14 +168,22 @@ export function ScenarioPanel({
         <button
           ref={launcherRef}
           type="button"
-          className={`pm-root pm-${position} pm-launcher`}
-          style={{ zIndex }}
+          className={`pm-root${corner} pm-launcher${dragClass}`}
+          style={{ zIndex, ...offset }}
           onClick={() => p.setOpen(true)}
-          aria-label={`Open ${title.toLowerCase()}${hotkey ? ` (${formatBinding(hotkey)})` : ""}`}
+          aria-label={`Open ${title.toLowerCase()}${hotkey ? ` (${formatBinding(hotkey)})` : ""}${draggable ? ", or drag to move it" : ""}`}
+          {...(draggable ? drag.handleProps : {})}
         >
-          <GearIcon size={20} />
+          <NodesIcon size={20} />
         </button>
-        {p.paletteOpen ? <ScenarioPalette zIndex={zIndex + 1} /> : null}
+        {drag.snapPreview ? (
+          <div
+            aria-hidden="true"
+            className={`pm-root pm-${drag.snapPreview} pm-snap-preview pm-snap-launcher`}
+            style={{ zIndex: zIndex - 1 }}
+          />
+        ) : null}
+        {p.diagramOpen ? <ScenarioDiagram zIndex={zIndex + 1} /> : null}
       </>
     )
   }
@@ -157,145 +197,81 @@ export function ScenarioPanel({
     get: () => p.machine.contextOf(p.snapshot),
   }
 
-  const recent = showHistory ? p.history.entries.slice(-6).reverse() : []
-
   return (
     <>
-      <div
-        ref={panelRef}
-        className={`pm-root pm-${position} pm-panel`}
-        style={{ zIndex }}
-        role="dialog"
-        aria-label={title}
-        onKeyDown={(event) => {
-          /* Undo lives here rather than on `window` on purpose: mod+z belongs
-             to whatever the host is doing, and the panel only gets it while
-             the panel has focus. */
-          if (isTypingTarget(event.target)) return
-          if (matches(event.nativeEvent, parseBinding("mod+z"))) {
-            event.preventDefault()
-            p.undo()
-          } else if (matches(event.nativeEvent, parseBinding("mod+shift+z"))) {
-            event.preventDefault()
-            p.redo()
-          }
-        }}
-      >
-        <div className="pm-head">
-          <span className="pm-title">{title}</span>
-          <div className="pm-head-actions">
-            <button
-              type="button"
-              className="pm-icon-button"
-              onClick={p.undo}
-              disabled={!p.canUndo}
-              aria-label="Undo"
-              title="Undo (⌘Z inside this panel)"
-            >
-              <UndoIcon size={14} />
-            </button>
-            <button
-              type="button"
-              className="pm-icon-button"
-              onClick={p.redo}
-              disabled={!p.canRedo}
-              aria-label="Redo"
-              title="Redo"
-            >
-              <RedoIcon size={14} />
-            </button>
-            <button
-              type="button"
-              className="pm-icon-button"
-              onClick={() => {
-                const markdown = p.markdown()
-                void p.copy().then((ok) => setCopied(ok))
-                onCopy?.(markdown)
-              }}
-              aria-label="Copy scenario for an agent"
-              title="Copy this scenario as markdown, for pasting to a coding agent"
-            >
-              {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-            </button>
-            <button
-              type="button"
-              className="pm-icon-button"
-              onClick={() => {
-                restoreFocus.current = true
-                p.setOpen(false)
-              }}
-              aria-label={`Close ${title.toLowerCase()}`}
-            >
-              <CloseIcon size={16} />
-            </button>
-          </div>
-        </div>
-
-        <div className="pm-rows">
-          {Object.entries(machines).map(([id, def]) =>
-            visible(def, p.env) ? (
-              <MachineRow key={id} id={id} def={def} scenario={p} />
-            ) : null
-          )}
-
-          {Object.entries(fields).map(([id, def]) =>
-            visible(def, p.env) ? <FieldRow key={id} id={id} def={def} scenario={p} /> : null
-          )}
-
-          {children}
-
-          {actions.length ? (
-            <div className="pm-actions">
-              {actions.map((action) =>
-                visible(action, p.env) ? (
-                  <button
-                    key={action.id}
-                    type="button"
-                    className="pm-action"
-                    title={action.title}
-                    onClick={() => action.run(actionApi)}
-                  >
-                    {action.label}
-                  </button>
-                ) : null
-              )}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="pm-foot">
-          {showHistory && recent.length > 1 ? (
-            <div>
-              <span className="pm-label">History</span>
-              <div className="pm-history">
-                {recent.map((entry) => {
-                  const index = p.history.entries.indexOf(entry)
-                  return (
-                    <button
-                      key={`${entry.at}-${index}`}
-                      type="button"
-                      className="pm-history-item"
-                      aria-current={index === p.history.index}
-                      onClick={() => p.jump(index)}
-                      title={entry.label ?? "Where this session started"}
-                    >
-                      {entry.label ?? "Session start"}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
-
-          {paletteHotkey ? (
-            <span className="pm-hint">
-              <kbd>{formatBinding(paletteHotkey)}</kbd> for the scenario palette
-            </span>
-          ) : null}
+    <div
+      ref={panelRef}
+      className={`pm-root${corner} pm-panel${dragClass}`}
+      style={{ zIndex, ...offset }}
+      role="dialog"
+      aria-label={title}
+    >
+      {/* The header is the drag handle; its buttons are excluded by the
+          handle's own target test. Double-click returns it to its corner. */}
+      <div className="pm-head" {...(draggable ? drag.handleProps : {})}>
+        <span className="pm-title">{title}</span>
+        <div className="pm-head-actions">
+          <button
+            type="button"
+            className="pm-icon-button"
+            onClick={() => p.setDiagramOpen(true)}
+            aria-label="Show the state diagram"
+            title={`Draw this scenario's state space${diagramHotkey ? ` (${formatBinding(diagramHotkey)})` : ""}`}
+          >
+            <DiagramIcon size={14} />
+          </button>
+          <button
+            type="button"
+            className="pm-icon-button"
+            onClick={() => {
+              restoreFocus.current = true
+              p.setOpen(false)
+            }}
+            aria-label={`Close ${title.toLowerCase()}`}
+          >
+            <CloseIcon size={16} />
+          </button>
         </div>
       </div>
 
-      {p.paletteOpen ? <ScenarioPalette zIndex={zIndex + 1} /> : null}
+      <div className="pm-rows">
+        {Object.entries(machines).map(([id, def]) =>
+          visible(def, p.env) ? <MachineRow key={id} id={id} def={def} scenario={p} /> : null
+        )}
+
+        {Object.entries(fields).map(([id, def]) =>
+          visible(def, p.env) ? <FieldRow key={id} id={id} def={def} scenario={p} /> : null
+        )}
+
+        {children}
+
+        {actions.length ? (
+          <div className="pm-actions">
+            {actions.map((action) =>
+              visible(action, p.env) ? (
+                <button
+                  key={action.id}
+                  type="button"
+                  className="pm-action"
+                  title={action.title}
+                  onClick={() => action.run(actionApi)}
+                >
+                  {action.label}
+                </button>
+              ) : null
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
+    {drag.snapPreview ? (
+      <div
+        aria-hidden="true"
+        className={`pm-root pm-${drag.snapPreview} pm-snap-preview pm-snap-panel`}
+        style={{ zIndex: zIndex - 1 }}
+      />
+    ) : null}
+    {p.diagramOpen ? <ScenarioDiagram zIndex={zIndex + 1} /> : null}
     </>
   )
 }

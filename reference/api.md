@@ -1,6 +1,6 @@
 # API reference
 
-**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.1.0.
+**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.5.0.
 
 For *how to model* a scenario space, read [recipes.md](recipes.md) first. This file is
 the exhaustive surface.
@@ -13,7 +13,7 @@ the exhaustive surface.
 - [Actions](#actions)
 - [ScenarioProvider](#scenarioprovider)
 - [ScenarioPanel](#scenariopanel)
-- [ScenarioPalette](#scenariopalette)
+- [ScenarioDiagram](#scenariodiagram)
 - [useScenario](#usescenario)
 - [The core entry](#the-core-entry)
 - [Errors and warnings](#errors-and-warnings)
@@ -32,7 +32,7 @@ const scenario = defineMachine({ machines, fields, derive, actions })
 | `machines` | `Record<string, MachineDef>` | Journeys. Each puts its current state id into context under its own name. |
 | `fields` | `Record<string, AnyField>` | Independent axes. |
 | `derive` | `Record<string, (ctx) => value>` | Computed values. Never stored, never in a URL. `ctx` is fully typed and contains machines, tuples and fields — but not other derived values. |
-| `actions` | `ActionDef[]` | Buttons at the foot of the panel, and entries in the palette. |
+| `actions` | `ActionDef[]` | Buttons at the foot of the panel. |
 
 Everything is validated at module load. Types are inferred, so `useScenario(scenario)`
 knows the shape of context with no annotation anywhere.
@@ -57,7 +57,7 @@ Context is the union of four things, and no two of them may share a name:
 | `hidden` | `boolean` | no | In context, URL and storage; out of the panel. |
 
 `MachineStateDef` is `{ label?, note?, assign? }`. `assign` is the tuple this state
-writes into context; `note` is the tooltip and is quoted in the agent report.
+writes into context; `note` is the tooltip and is quoted in the diagram's caption.
 
 ### transitions
 
@@ -118,7 +118,6 @@ unless the provider was given a `navigate` prop.
 | `navigate` | `(to: string) => void` | — | Router push, for actions. |
 | `env` | `Record<string, unknown>` | — | Merged into what `when` sees. |
 | `enabled` | `boolean` | `NODE_ENV !== "production"` | Whether the controls mount. Context is provided either way. |
-| `historyLimit` | `number` | `50` | Undo depth. |
 
 Mount it once, above everything that reads a scenario.
 
@@ -140,10 +139,9 @@ needs `suppressHydrationWarning`.
 | `title` | `string` | `"Prototype controls"` |
 | `zIndex` | `number` | `690` |
 | `hotkey` | `string \| null` | `"mod+."` |
-| `paletteHotkey` | `string \| null` | `"mod+shift+p"` |
+| `diagramHotkey` | `string \| null` | `null` |
+| `draggable` | `boolean` | `true` |
 | `inset` | `{ name: string; value: string }` | — |
-| `showHistory` | `boolean` | `true` |
-| `onCopy` | `(markdown: string) => void` | — |
 | `enabled` | `boolean` | the provider's |
 | `children` | `ReactNode` | — |
 
@@ -156,14 +154,80 @@ host can push its own corner UI clear: `{ name: "--toast-inset-bottom", value: "
 `zIndex` defaults to 690 — above an app's overlays, below anything that must never be
 covered, like a mandated classification banner.
 
-## ScenarioPalette
+### Dragging and snapping
 
-Rendered by the panel; export exists so you can mount it alone (a panel-less build where
-the palette is the only surface). Takes `zIndex`.
+`position` is where the panel *starts*. Drag the launcher anywhere, or the expanded
+panel by its header; buttons and inputs inside the header are excluded, so a copy click
+is never a drag.
 
-Every state of every visible machine, plus every action. Unreachable states are listed
-and disabled with the reason, because someone typing "active" and getting nothing back
-concludes the feature is broken.
+**Release within 140px of a corner and it takes the corner** — measured diagonally, so a
+drop that is 100px out on both axes is 141px away and stays put. A dashed outline
+previews the corner while you drag, and the settle is animated once.
+
+What gets stored is the corner itself, not pixels:
+
+| Stored | Rendered as |
+| --- | --- |
+| `{ kind: "corner", corner }` | The `pm-<corner>` class, so the browser keeps it anchored through a resize |
+| `{ kind: "free", x, y }` | Inline offsets, clamped to the viewport on resize and on mount |
+
+Under `` `${storageKey}:pm-panel-position` ``. A bare `{x, y}` from before snapping
+existed is migrated to a free placement rather than discarded.
+
+Movement under 8px is a click, not a drag. Arrow keys nudge by 8px (32 with shift) while
+the handle has focus, and always produce a free placement — someone pressing an arrow key
+is aiming. Double-click the handle to send it back to `position` and forget the stored
+value. `draggable={false}` turns all of it off.
+
+## ScenarioDiagram
+
+The declared state space, drawn as a monospace figure **beside** the app. Opened from the
+panel's header button, from `diagramHotkey` if you bind one, or mounted yourself.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `zIndex` | `number` | `691` |
+| `defaultDock` | `"right" \| "left" \| "free"` | `"right"` |
+| `draggable` | `boolean` | `true` |
+
+### Where it sits
+
+It **docks to an edge and draws no backdrop**, so the component underneath stays visible
+and clickable. A diagram that explains a component must not be the thing hiding it. Being
+non-modal, it carries no `aria-modal`.
+
+- **Resize** it by the handle on its inner edge, between 320px and 92% of the viewport.
+- **Drag its header** to pull it free; drop within 64px of the left or right edge to
+  re-dock, or anywhere else to leave it floating — where the panel's own 140px corner
+  snapping then applies. Edge beats corner, because for a full-height pane the edge *is*
+  the anchor. A floating pane has a `dock` button to put it back.
+- Double-click the header to reset it to `defaultDock` at its default width.
+- State lives under `` `${storageKey}:pm-diagram` ``.
+
+While docked it sets `--pm-diagram-inset-right` (or `-left`) on `<html>`. The panel reads
+it and slides clear automatically; your own layout can read it too if you would rather
+reflow than be overlaid.
+
+One figure per visible machine. Fields are deliberately absent — they are free axes, not
+states, and drawing them here would blur the distinction the model exists to make.
+
+Two layouts, chosen by whether `transitions` was declared:
+
+| Machine | Drawn as |
+| --- | --- |
+| `transitions` declared | A ranked graph. Rank is a row, forward edges share one trunk per source, and the current state is accented. |
+| `transitions` omitted | A flat row, no arrows, captioned "any state is one click from any other". |
+
+Drawing a transition-less control as a graph would mean n*(n-1) arrows carrying no
+information, so it is not drawn that way.
+
+Edges that run against the rank order — back edges and rank skips — are listed as
+`↩ target` text under their source rather than routed around the figure, and collapse to
+`↩ n more` when the list will not fit. Clicking a node moves the machine; a node you
+cannot legally reach is drawn and disabled, so the shape of the journey stays visible.
+
+Motion fires only on a transition: the travelled edge is revealed cell by cell and the
+arriving label types in. `prefers-reduced-motion` skips to the final frame.
 
 ## useScenario
 
@@ -181,13 +245,7 @@ Returns context and the API on one object.
 | `can` | `(machine, state) => boolean` | From the current state. |
 | `movesFrom` | `(machine) => string[]` | |
 | `reset` | `() => void` | Defaults, and clears storage. |
-| `undo` / `redo` | `() => void` | |
-| `canUndo` / `canRedo` | `boolean` | |
-| `jump` | `(index) => void` | |
-| `history` | `{ entries, index }` | Entries are `{ snapshot, label, at }`. |
 | `link` | `() => string` | Current URL with the scenario applied. |
-| `markdown` | `() => string` | The agent report. |
-| `copy` | `() => Promise<boolean>` | `markdown()` to the clipboard; falls back to `execCommand` on insecure origins, which is where prototypes live. |
 | `snapshot` | `{ machines, fields }` | |
 | `machine` | `CompiledMachine` | |
 | `env` | `Env` | |
@@ -195,7 +253,8 @@ Returns context and the API on one object.
 | `hydrated` | `boolean` | |
 | `enabled` | `boolean` | |
 | `open` / `setOpen` | | For your own trigger. |
-| `paletteOpen` / `setPaletteOpen` | | |
+| `diagramOpen` / `setDiagramOpen` | | The state diagram's visibility. |
+| `storageKey` | `string` | The provider's own key, for namespacing beside it. |
 
 `useScenarioValue(machine, key)` reads one value.
 
@@ -205,14 +264,19 @@ throws if it tries.
 ## The core entry
 
 ```ts
-import { defineMachine, toMarkdown, toSearch, fromSearch, resolve } from "prototype-machine/core"
+import { defineMachine, layout, toSearch, fromSearch, resolve } from "prototype-machine/core"
 ```
 
 No React import anywhere in it. Use it in tests, scripts, or a non-React adapter:
 `compile`, `defineMachine`, `isValidFieldValue`, `optionsOf`, `visible`, `toSearch`,
 `fromSearch`, `toLink`, `readStorage`, `writeStorage`, `clearStorage`, `resolve`,
-`initHistory`, `push`, `undo`, `redo`, `at`, `canUndo`, `canRedo`, `describe`,
-`sameSnapshot`, `toMarkdown`, `copyText`.
+`layout`. The React entry additionally exports the snapping and
+docking primitives — `snapTarget`, `cornerPosition`, `clampToViewport`, `edgeTarget`,
+`useDrag`, `useDock` — which are pure and testable without a DOM.
+
+`layout(machine, machineId, currentState)` returns the diagram as a character grid —
+`{ rows: Cell[][] }` where each `Cell` carries its glyph, a kind for colouring, and the
+node or edge it belongs to. Use it to render a figure somewhere other than the overlay.
 
 ## Errors and warnings
 
@@ -244,11 +308,12 @@ model, so do not swallow them.
 | Binding | Does |
 | --- | --- |
 | `mod+.` | Toggle the panel |
-| `mod+shift+p` | Open the palette |
-| `↑` `↓` `Enter` `Esc` | Move, apply, dismiss in the palette |
-| `Esc` | Close the panel |
-| `mod+z` / `mod+shift+z` | Undo / redo — **only while the panel has focus** |
+| `Esc` | Close the diagram if it is open, otherwise the panel |
+| drag near a corner | Snap the panel to it (140px) |
+| drag near a side | Dock the diagram to it (64px) |
+| `↑` `↓` `←` `→` | Nudge the panel 8px while its handle has focus |
+| `shift` + arrows | Nudge 32px |
 
 `mod` is Command on Apple platforms, Control elsewhere. No binding fires while focus is
-in an input, textarea, select or contenteditable. Undo is never bound globally: `mod+z`
-belongs to whatever the host is doing.
+in an input, textarea, select or contenteditable — a panel that opens because a reviewer
+typed a full stop in a search box is worse than no shortcut.

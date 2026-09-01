@@ -23,10 +23,25 @@ function Svg({ size = 16, children }: { size?: number; children: React.ReactNode
   )
 }
 
-export const GearIcon = ({ size }: { size?: number }) => (
+/* Three states, one of them current. A gear says "app settings", which is the
+   one thing a piece of scaffolding must not say — and sliders would say
+   "values", which is what this tool deliberately is not. */
+export const NodesIcon = ({ size }: { size?: number }) => (
   <Svg size={size}>
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    <path d="M8.4 8.6 5.6 15.4M14 7.8l3.6 6.6M8.9 18h6.2" />
+    <circle cx="12" cy="6" r="2.4" fill="currentColor" stroke="none" />
+    <circle cx="5" cy="18" r="2.4" />
+    <circle cx="19" cy="18" r="2.4" />
+  </Svg>
+)
+
+/* A figure, framed. Matches the diagram's own visual language. */
+export const DiagramIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="M3 4h4M17 4h4M3 20h4M17 20h4M3 4v3M21 4v3M3 20v-3M21 20v-3" />
+    <rect x="8.5" y="7" width="7" height="4" rx="1" />
+    <rect x="8.5" y="13" width="7" height="4" rx="1" />
+    <path d="M12 11v2" />
   </Svg>
 )
 
@@ -36,32 +51,6 @@ export const CloseIcon = ({ size }: { size?: number }) => (
   </Svg>
 )
 
-export const UndoIcon = ({ size }: { size?: number }) => (
-  <Svg size={size}>
-    <path d="M3 7v6h6" />
-    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-  </Svg>
-)
-
-export const RedoIcon = ({ size }: { size?: number }) => (
-  <Svg size={size}>
-    <path d="M21 7v6h-6" />
-    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
-  </Svg>
-)
-
-export const CopyIcon = ({ size }: { size?: number }) => (
-  <Svg size={size}>
-    <rect x="9" y="9" width="13" height="13" rx="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </Svg>
-)
-
-export const CheckIcon = ({ size }: { size?: number }) => (
-  <Svg size={size}>
-    <path d="M20 6 9 17l-5-5" />
-  </Svg>
-)
 
 export const SearchIcon = ({ size }: { size?: number }) => (
   <Svg size={size}>
