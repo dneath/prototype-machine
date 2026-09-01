@@ -8,7 +8,7 @@ description: >-
   landed," "send someone a link to this exact scenario," or when a prototype has grown a
   hand-rolled panel of toggles that can be driven into states the product cannot reach.
   Covers modelling journeys vs free axes, transitions and guards, URL and storage
-  precedence, the scenario palette, undo, and the agent report. Triggers on: prototype
+  precedence, and the ASCII state diagram. Triggers on: prototype
   controls, scenario switcher, state switcher, persona switcher, role switcher, dev
   panel, debug panel, empty state, loading state, error state, forced state, first-run,
   onboarding state, feature flag panel, prototype-machine, defineMachine, ScenarioPanel,
@@ -61,14 +61,14 @@ and to wire the panel that drives it.
 
 ## Setup check
 
-This guidance targets **prototype-machine 0.1.0**.
+This guidance targets **prototype-machine 0.5.0**.
 
 1. Read the project's `package.json` and lockfile before touching anything. Check
    whether `prototype-machine` is already installed and at which version.
 2. **Never add or upgrade a dependency silently.** If the user authorises it, pin the
    version:
    ```bash
-   npm install --save-exact prototype-machine@0.1.0 -D
+   npm install --save-exact prototype-machine@0.5.0 -D
    ```
 3. **Never copy the package's source into the app.** It is an npm dependency, not a
    snippet to paste. If the user wants to modify it, they change the package.
@@ -126,11 +126,10 @@ No stylesheet import, no Tailwind config, no build-step change.
    are independent; a ladder if they are not. Recipe 1 and 3.
 4. **"This toggle lets me build a state that can't happen"** → the two switches are one
    machine. Recipe 4, the migration recipe.
-5. **"Send someone this exact state"** → already works; `p.link()`, or the copy button.
-6. **"Tell the agent what I'm looking at"** → the copy button, or `p.markdown()`.
-7. **A control that only makes sense on one screen** → `when: (env) => env.path === "/signin"`.
-8. **Config throws at boot** → the message names the problem and the fix. It is meant to.
-9. **Anything about production flags, real auth, or persisted user settings** → wrong
+5. **"Send someone this exact state"** → already works; `p.link()`.
+6. **A control that only makes sense on one screen** → `when: (env) => env.path === "/signin"`.
+7. **Config throws at boot** → the message names the problem and the fix. It is meant to.
+8. **Anything about production flags, real auth, or persisted user settings** → wrong
    tool. Say so.
 
 ## Design principles
@@ -152,4 +151,17 @@ No stylesheet import, no Tailwind config, no build-step change.
 6. **Dev-only, and prove it at the bundler.** `enabled` stops it rendering; a production
    alias stops it shipping.
 7. **Label every state in the reviewer's language.** `note` is what the tooltip and the
-   agent report quote. "2 of 3, waiting pill live" is worth more than `keyMade`.
+   diagram quote. "2 of 3, waiting pill live" is worth more than `keyMade`.
+8. **The panel has to be movable, because it covers the thing being reviewed.** It drags
+   from its launcher or its header, snaps to a corner when released near one, and
+   remembers where it was put. Do not reintroduce a fixed corner as the only option.
+   For the same reason the diagram DOCKS beside the app rather than over it, and draws no
+   backdrop — a figure explaining a component must not be the thing hiding it.
+10. **If it is not a state of the component, it is a field.** A theme switch, a density
+    toggle, a locale — these vary freely, write no tuple and mean nothing to the machines.
+    Modelling one as a machine puts it in the state diagram beside the real states, which
+    is how a reviewer ends up reading "light / dark" as part of a journey. Fields are kept
+    out of the diagram deliberately; use one.
+9. **`transitions` is what makes the diagram worth opening.** A machine without them draws
+   as a flat row, which is correct and also uninformative. If the thing you are modelling
+   really is a journey, declaring the map is what makes its shape visible.

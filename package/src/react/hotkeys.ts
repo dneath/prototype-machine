@@ -7,14 +7,9 @@ import * as React from "react"
  * `mod` is Command on Apple platforms and Control everywhere else, which is the
  * only portable way to spell "the modifier this user's muscle memory expects".
  *
- * Two rules this file exists to enforce:
- *
- *   1. Never fire while someone is typing. A prototype is full of inputs, and a
- *      panel that opens because a reviewer typed a full stop in a search box is
- *      worse than no shortcut.
- *   2. Never bind undo globally. `mod+z` belongs to whatever the host is doing;
- *      the panel gets it only while the panel has focus, which is why the undo
- *      binding lives on the panel element and not on `window`.
+ * The rule this file exists to enforce: never fire while someone is typing. A
+ * prototype is full of inputs, and a panel that opens because a reviewer typed
+ * a full stop in a search box is worse than no shortcut.
  */
 
 export interface Binding {

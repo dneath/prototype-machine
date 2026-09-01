@@ -13,7 +13,7 @@
         "states": {
           "type": "Record<string, {label?, note?, assign?}>",
           "required": true,
-          "description": "`assign` is the tuple this state writes. `note` is the tooltip and is quoted in the agent report."
+          "description": "`assign` is the tuple this state writes. `note` is the tooltip and is quoted in the diagram."
         },
         "transitions": {
           "type": "Record<string, string[]>",
@@ -126,7 +126,7 @@
     "note": "`ctx` contains machine cursors, assigned tuples and fields, but not other derived values."
   },
   "actions": {
-    "description": "Buttons at the foot of the panel and entries in the palette.",
+    "description": "Buttons at the foot of the panel.",
     "keys": {
       "id": "string",
       "label": "string",
@@ -150,23 +150,16 @@
     "can",
     "movesFrom",
     "reset",
-    "undo",
-    "redo",
-    "canUndo",
-    "canRedo",
-    "jump",
-    "history",
     "link",
-    "markdown",
-    "copy",
     "snapshot",
     "machine",
+    "storageKey",
     "env",
     "navigate",
     "open",
     "setOpen",
-    "paletteOpen",
-    "setPaletteOpen",
+    "diagramOpen",
+    "setDiagramOpen",
     "hydrated",
     "enabled"
   ],
@@ -178,8 +171,9 @@
   ],
   "keyboard": {
     "mod+.": "toggle the panel",
-    "mod+shift+p": "open the scenario palette",
-    "Escape": "close the panel or palette",
-    "mod+z / mod+shift+z": "undo / redo, only while the panel has focus"
+    "Escape": "close the diagram if open, otherwise the panel",
+    "arrows": "nudge the panel while its handle has focus; shift for a bigger step",
+    "drag near a corner": "snap the panel to it (within 140px)",
+    "drag near a side": "dock the diagram to it (within 64px)"
   }
 }

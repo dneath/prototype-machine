@@ -14,7 +14,29 @@ export {
 } from "./react/provider"
 export { useScenario, useScenarioValue } from "./react/use-scenario"
 export { ScenarioPanel, type PanelPosition, type ScenarioPanelProps } from "./react/panel"
-export { ScenarioPalette } from "./react/palette"
+export { ScenarioDiagram, type ScenarioDiagramProps } from "./react/diagram"
+export {
+  useDrag,
+  clampToViewport,
+  cornerPosition,
+  snapTarget,
+  DRAG_THRESHOLD,
+  SNAP_DISTANCE,
+  type Corner,
+  type Placement,
+  type Point,
+  type UseDragOptions,
+  type UseDragResult,
+} from "./react/drag"
+export {
+  useDock,
+  edgeTarget,
+  clampWidth,
+  type DockMode,
+  type DockState,
+  type UseDockOptions,
+  type UseDockResult,
+} from "./react/dock"
 export { FieldRow, MachineRow, Pill, Row } from "./react/controls"
 export { formatBinding, isTypingTarget, parseBinding, useHotkey } from "./react/hotkeys"
 export { injectStyles, styles } from "./react/styles"

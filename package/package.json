@@ -1,6 +1,6 @@
 {
   "name": "prototype-machine",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "A dev-only control panel that drives a prototype through its states \u2014 declared as state machines, so illegal combinations cannot be expressed.",
   "author": "danneath",
   "license": "MIT",

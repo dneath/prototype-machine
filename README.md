@@ -53,6 +53,24 @@ npm install --save-exact prototype-machine -D
 Full documentation: [`package/README.md`](package/README.md).
 Modelling guidance: [`reference/recipes.md`](reference/recipes.md).
 
+## Example prompts
+
+The states worth showing are the ones nobody can click to, so a request for this
+usually arrives as a complaint about the prototype rather than as a feature
+request. Any of these is enough for an agent with the skill loaded to start from:
+
+- "add prototype controls so I can switch between the empty, loading and error states"
+- "let me demo the state where the key exists but no request has landed"
+- "these two toggles let me build a state that can't actually happen"
+- "add a role switcher for admin, member and viewer"
+- "only show the seat control on the billing screen"
+- "send someone a link to this exact scenario"
+- "show me the shape of this journey — what leads where?"
+- "the panel is covering the thing I'm trying to look at"
+
+Each of those worked through to the config it produces:
+[Examples](package/README.md#examples).
+
 ## Development
 
 ```bash
@@ -64,7 +82,7 @@ npm run build     # tsup -> dist (esm + cjs + types)
 
 cd demo
 npm install
-npm run dev       # a playground on :5199 exercising every feature
+npm run dev       # a playground on :5199
 ```
 
 ## License

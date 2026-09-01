@@ -18,19 +18,6 @@ import {
   toLink,
   writeStorage,
 } from "../core/serialize"
-import {
-  type History,
-  at as historyAt,
-  canRedo as canRedoOf,
-  canUndo as canUndoOf,
-  describe,
-  initHistory,
-  push as pushHistory,
-  redo as redoHistory,
-  undo as undoHistory,
-  DEFAULT_LIMIT,
-} from "../core/history"
-import { copyText, toMarkdown } from "../core/report"
 
 export interface ScenarioApi {
   /** Change free fields. Refuses keys a machine owns. */
@@ -43,23 +30,13 @@ export interface ScenarioApi {
   /** Back to the config's defaults, and forget what was stored. */
   reset(): void
 
-  undo(): void
-  redo(): void
-  canUndo: boolean
-  canRedo: boolean
-  /** Jump to any point in this session's history. */
-  jump(index: number): void
-  history: History
-
   /** A URL that reproduces the current scenario. */
   link(): string
-  /** The current scenario, written out for a coding agent. */
-  markdown(): string
-  /** `markdown()` onto the clipboard. Resolves to whether it landed. */
-  copy(): Promise<boolean>
 
   snapshot: Snapshot
   machine: CompiledMachine
+  /** The provider's localStorage key, for anything needing to namespace beside it. */
+  storageKey: string
   env: Env
   navigate(to: string): void
   hydrated: boolean
@@ -68,8 +45,8 @@ export interface ScenarioApi {
 
   open: boolean
   setOpen(open: boolean): void
-  paletteOpen: boolean
-  setPaletteOpen(open: boolean): void
+  diagramOpen: boolean
+  setDiagramOpen(open: boolean): void
 }
 
 /** Context and the API in one object, so `p.step` and `p.set` read alike. */
@@ -117,8 +94,6 @@ export interface ScenarioProviderProps {
    * module at the bundler; see the README.
    */
   enabled?: boolean
-  /** How many moves undo remembers. */
-  historyLimit?: number
   children?: React.ReactNode
 }
 
@@ -129,16 +104,14 @@ export function ScenarioProvider({
   navigate,
   env: extraEnv,
   enabled,
-  historyLimit = DEFAULT_LIMIT,
   children,
 }: ScenarioProviderProps) {
   const m = machine as CompiledMachine
   const hydrated = useHydrated()
 
   const [edits, setEdits] = React.useState<PartialSnapshot>({})
-  const [history, setHistory] = React.useState<History | null>(null)
   const [open, setOpen] = React.useState(false)
-  const [paletteOpen, setPaletteOpen] = React.useState(false)
+  const [diagramOpen, setDiagramOpen] = React.useState(false)
 
   /* Server and first client render both produce the config's defaults, so the
      markup matches and nothing has to be suppressed. Storage and the URL are
@@ -150,14 +123,6 @@ export function ScenarioProvider({
   }, [hydrated, m, storageKey])
 
   const snapshot = React.useMemo(() => resolve(m, [...layers, edits]), [m, layers, edits])
-
-  /* History starts empty rather than at the defaults, so its first entry is the
-     hydrated scenario rather than a state the reviewer was never in. Resolving
-     it lazily keeps that out of an effect. */
-  const effectiveHistory = React.useMemo(
-    () => history ?? initHistory(snapshot),
-    [history, snapshot]
-  )
 
   /* Writing to an external system is exactly what an effect is for. */
   React.useEffect(() => {
@@ -187,34 +152,9 @@ export function ScenarioProvider({
 
   const env = React.useMemo<Env>(() => ({ path, ...extraEnv }), [path, extraEnv])
 
-  /* One writer for every mutation. Takes the FULL next edits rather than a
-     patch, so the snapshot it records and the snapshot the next render resolves
-     are the same object graph — and so nothing calls setState from inside
-     another setState's updater, which React is free to run twice. */
-  const commit = React.useCallback(
-    (next: PartialSnapshot) => {
-      const nextSnapshot = resolve(m, [...layers, next])
-      const label = describe(m, snapshot, nextSnapshot)
-      setEdits(next)
-      setHistory((h) =>
-        pushHistory(h ?? initHistory(snapshot), { snapshot: nextSnapshot, label }, historyLimit)
-      )
-    },
-    [m, layers, snapshot, historyLimit]
-  )
-
-  /* Undo, redo and jump replace the whole edit layer with a stored snapshot.
-     A full snapshot as the top layer overrides storage and URL beneath it,
-     which is what "go back to exactly that" has to mean. */
-  const restore = React.useCallback((nextHistory: History) => {
-    const entry = historyAt(nextHistory)
-    setHistory(nextHistory)
-    setEdits({
-      machines: { ...entry.snapshot.machines },
-      fields: { ...entry.snapshot.fields },
-    })
-  }, [])
-
+  /* Every mutation writes the FULL next edit layer rather than a patch, so
+     nothing calls setState from inside another setState's updater — which
+     React is free to run twice. */
   const api = React.useMemo<Scenario>(() => {
     const go = (machineId: string, stateId: string) => {
       const def = m.config.machines[machineId]
@@ -239,7 +179,7 @@ export function ScenarioProvider({
         }
         return
       }
-      commit({
+      setEdits({
         machines: { ...edits.machines, [machineId]: stateId },
         fields: { ...edits.fields },
       })
@@ -264,13 +204,11 @@ export function ScenarioProvider({
         fields[key] = value
       }
       if (!Object.keys(fields).length) return
-      commit({
+      setEdits({
         machines: { ...edits.machines },
         fields: { ...edits.fields, ...fields },
       })
     }
-
-    const markdown = () => toMarkdown(m, snapshot, { path })
 
     return {
       ...context,
@@ -292,22 +230,11 @@ export function ScenarioProvider({
         clearStorage(storageKey)
         const fresh = m.initial()
         setEdits({ machines: { ...fresh.machines }, fields: { ...fresh.fields } })
-        setHistory(initHistory(fresh))
       },
-      undo: () => restore(undoHistory(effectiveHistory)),
-      redo: () => restore(redoHistory(effectiveHistory)),
-      canUndo: canUndoOf(effectiveHistory),
-      canRedo: canRedoOf(effectiveHistory),
-      jump: (index: number) => {
-        if (!effectiveHistory.entries[index]) return
-        restore({ ...effectiveHistory, index })
-      },
-      history: effectiveHistory,
       link: () => toLink(m, snapshot),
-      markdown,
-      copy: () => copyText(markdown()),
       snapshot,
       machine: m,
+      storageKey,
       env,
       navigate: (to: string) => {
         if (navigate) navigate(to)
@@ -321,12 +248,12 @@ export function ScenarioProvider({
       enabled: enabled ?? isDev,
       open,
       setOpen,
-      paletteOpen,
-      setPaletteOpen,
+      diagramOpen,
+      setDiagramOpen,
     }
   }, [
-    context, m, snapshot, edits, commit, restore, effectiveHistory, storageKey,
-    env, navigate, path, hydrated, enabled, open, paletteOpen,
+    context, m, snapshot, edits, storageKey,
+    env, navigate, path, hydrated, enabled, open, diagramOpen,
   ])
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>
