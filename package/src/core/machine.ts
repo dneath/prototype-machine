@@ -23,12 +23,24 @@ export interface PartialSnapshot {
   fields?: Record<string, Primitive>
 }
 
-declare const process: { env?: { NODE_ENV?: string } } | undefined
+declare const process: { env: { NODE_ENV?: string } }
 
-/* Read once. A bundler that replaces `process.env.NODE_ENV` does it at build
-   time, so this constant-folds and the dev-only branches drop out. */
-export const isDev =
-  typeof process === "undefined" || process?.env?.NODE_ENV !== "production"
+/* Read once, and written so a bundler can substitute `process.env.NODE_ENV`
+   at build time — the expression is left textually intact for exactly that
+   reason, so it constant-folds and the dev-only branches drop out.
+ *
+ * When NOTHING substitutes it, `process` is undefined in a browser and the
+ * reference throws, and we assume PRODUCTION. That direction is deliberate:
+ * failing open puts a role switcher in a deployed build, which is much worse
+ * than failing closed, and `enabled` is the escape hatch for a review build
+ * that genuinely wants the controls. */
+export const isDev = (() => {
+  try {
+    return process.env.NODE_ENV !== "production"
+  } catch {
+    return false
+  }
+})()
 
 function warn(message: string) {
   if (isDev && typeof console !== "undefined") {
@@ -42,9 +54,9 @@ function warn(message: string) {
    `reset` would shadow the function. Cheaper to refuse the name than to make
    every consumer reach through `.context`. */
 export const RESERVED = new Set([
-  "set", "go", "can", "movesFrom", "reset", "undo", "redo", "canUndo", "canRedo",
-  "jump", "history", "link", "markdown", "copy", "snapshot", "machine", "env",
-  "navigate", "open", "setOpen", "paletteOpen", "setPaletteOpen", "hydrated", "enabled",
+  "set", "go", "can", "movesFrom", "reset", "link", "snapshot", "machine",
+  "storageKey", "env", "navigate", "open", "setOpen",
+  "diagramOpen", "setDiagramOpen", "hydrated", "enabled",
 ])
 
 export class ScenarioError extends Error {

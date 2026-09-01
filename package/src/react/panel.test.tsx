@@ -72,18 +72,62 @@ describe("the panel", () => {
     expect(screen.getByRole("button", { name: "Key made" }).hasAttribute("disabled")).toBe(false)
   })
 
-  it("undoes a move", async () => {
+  it("opens the state diagram, and draws both kinds of machine", async () => {
     const user = userEvent.setup()
     mount()
     await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
-    await user.click(screen.getByRole("button", { name: "Key made" }))
-    expect(screen.getByTestId("journey").textContent).toBe("keyMade")
+    await user.click(screen.getByRole("button", { name: /show the state diagram/i }))
 
-    await user.click(screen.getByRole("button", { name: "Undo" }))
-    expect(screen.getByTestId("journey").textContent).toBe("firstRun")
+    const diagram = await screen.findByRole("dialog", { name: "Scenario diagram" })
+    expect(diagram).toBeTruthy()
+    /* A declared journey draws arrowheads; a transition-less control does not. */
+    expect(diagram.textContent).toContain("▼")
+    expect(diagram.textContent).toContain("no transitions declared")
+  })
 
-    await user.click(screen.getByRole("button", { name: "Redo" }))
+  it("moves a machine from the diagram, and refuses an illegal node", async () => {
+    const user = userEvent.setup()
+    mount()
+    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
+    await user.click(screen.getByRole("button", { name: /show the state diagram/i }))
+
+    const diagram = await screen.findByRole("dialog", { name: "Scenario diagram" })
+    const nodes = Array.from(diagram.querySelectorAll("button.pm-dg-node"))
+    const named = (label: string) =>
+      nodes.find((b) => b.textContent?.trim() === label) as HTMLButtonElement
+
+    /* firstRun -> active is not declared, so the node is drawn but dead. */
+    expect(named("Active").disabled).toBe(true)
+
+    await user.click(named("Key made"))
     expect(screen.getByTestId("journey").textContent).toBe("keyMade")
+  })
+
+  it("does not cover the app: no backdrop, and not modal", async () => {
+    /* The diagram exists to explain a component. If it is also the thing hiding
+       the component, it has defeated itself. */
+    const user = userEvent.setup()
+    mount()
+    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
+    await user.click(screen.getByRole("button", { name: /show the state diagram/i }))
+
+    const diagram = await screen.findByRole("dialog", { name: "Scenario diagram" })
+    expect(diagram.getAttribute("aria-modal")).toBe(null)
+    expect(document.querySelector(".pm-dg-backdrop")).toBe(null)
+    /* Docked to an edge, so it occupies a strip and not the viewport. */
+    expect(diagram.className).toContain("pm-dg-right")
+  })
+
+  it("keeps the panel open while the diagram is up", async () => {
+    /* A click on a node in the overlay is not a click "outside the panel" in
+       any sense the reviewer means. */
+    const user = userEvent.setup()
+    mount()
+    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
+    await user.click(screen.getByRole("button", { name: /show the state diagram/i }))
+    await user.click(await screen.findByRole("button", { name: /close scenario diagram/i }))
+
+    expect(screen.getByRole("dialog", { name: "Prototype controls" })).toBeTruthy()
   })
 
   it("closes on Escape", async () => {
@@ -94,37 +138,6 @@ describe("the panel", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBe(null))
   })
 
-  it("opens the palette by hotkey and jumps to a scenario", async () => {
-    const user = userEvent.setup()
-    mount()
-    await user.keyboard("{Control>}{Shift>}P{/Shift}{/Control}")
-
-    const palette = await screen.findByRole("dialog", { name: "Scenario palette" })
-    expect(palette).toBeTruthy()
-
-    await user.keyboard("Key made")
-    await user.keyboard("{Enter}")
-
-    await waitFor(() => expect(screen.getByTestId("journey").textContent).toBe("keyMade"))
-  })
-
-  it("hands the copy callback the markdown for the current scenario", async () => {
-    const user = userEvent.setup()
-    const onCopy = vi.fn()
-    render(
-      <ScenarioProvider machine={aim} storageKey="panel-test-v1" enabled path="/guardrails">
-        <ScenarioPanel onCopy={onCopy} />
-      </ScenarioProvider>
-    )
-    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
-    await user.click(screen.getByRole("button", { name: /copy scenario for an agent/i }))
-
-    expect(onCopy).toHaveBeenCalledWith(expect.stringContaining("## Prototype scenario"))
-    expect(onCopy).toHaveBeenCalledWith(expect.stringContaining("Route: /guardrails"))
-  })
-})
-
-describe("provider layering", () => {
   it("lets a URL beat what this browser had stored", () => {
     window.localStorage.setItem(
       "panel-test-v1",

@@ -88,17 +88,10 @@ function Screen({ path, navigate }: { path: string; navigate: (to: string) => vo
         <div><dt>hasTraffic</dt><dd>{String(p.hasTraffic)}</dd></div>
       </dl>
 
-      {/* What the panel's copy button puts on the clipboard. Shown here so the
-          demo doubles as documentation of the agent report. */}
-      <details>
-        <summary>What a coding agent gets from the copy button</summary>
-        <pre>{p.markdown()}</pre>
-      </details>
-
       <p className="muted">
         The journey is a ladder: from <b>First run</b> only <b>Key made</b> and{" "}
         <b>Parked</b> are legal, so <b>Active</b> is drawn but dead. Press{" "}
-        <kbd>⌘.</kbd> for the panel and <kbd>⌘⇧P</kbd> for the palette.
+        <kbd>⌘.</kbd> for the panel.
       </p>
     </main>
   )
