@@ -123,6 +123,260 @@ a journey and has no illegal moves. Supply it and the panel disables the pills
 for moves you did not declare, drawn but dead, so the shape of the journey stays
 visible.
 
+## Examples
+
+### Ask for it
+
+The states worth showing are the ones nobody can click to, so a request for this
+usually arrives as a complaint about the prototype rather than as a feature
+request. Any of these is enough to start from:
+
+- "add prototype controls so I can switch between the empty, loading and error states"
+- "let me demo the state where the key exists but no request has landed"
+- "these two toggles let me build a state that can't actually happen"
+- "add a role switcher for admin, member and viewer"
+- "only show the seat control on the billing screen"
+- "send someone a link to this exact scenario"
+- "show me the shape of this journey — what leads where?"
+- "the panel is covering the thing I'm trying to look at"
+
+### Request: "let me force the empty, loading and error states"
+
+```tsx
+export const scenario = defineMachine({
+  machines: {
+    data: {
+      label: "Data state",
+      initial: "real",
+      param: "state",
+      // No `transitions`: a view switch is not a journey and has no illegal
+      // moves, so every state stays one click from every other.
+      states: {
+        real: { label: "Real" },
+        loading: { label: "Loading" },
+        empty: { label: "Empty" },
+        error: { label: "Error" },
+      },
+    },
+  },
+})
+
+// Usage:
+const p = useScenario(scenario)
+
+if (p.data === "loading") return <Skeleton />
+if (p.data === "error") return <ErrorState onRetry={retry} />
+if (p.data === "empty") return <EmptyState />
+return <Dashboard rows={rows} />
+```
+
+### Request: "let me step through first run — I keep resetting the database to see it"
+
+```tsx
+machines: {
+  journey: {
+    label: "Get connected",
+    initial: "firstRun",
+    // Each rung writes the WHOLE tuple, so no click can produce a request that
+    // arrived on a key which was never issued.
+    states: {
+      parked:    { label: "Parked",     note: "No models assigned yet",       assign: { step: 0, keyIssued: false, firstRequestAt: null } },
+      firstRun:  { label: "First run",  note: "1 of 3, nothing else done",    assign: { step: 1, keyIssued: false, firstRequestAt: null } },
+      keyMade:   { label: "Key made",   note: "2 of 3, waiting pill live",    assign: { step: 2, keyIssued: true,  firstRequestAt: null } },
+      requestIn: { label: "Request in", note: "3 of 3, receipt shown",        assign: { step: 3, keyIssued: true,  firstRequestAt: FIRST_REQUEST } },
+    },
+    transitions: {
+      parked:    ["firstRun"],
+      firstRun:  ["keyMade", "parked"],
+      keyMade:   ["requestIn", "firstRun"],
+      requestIn: ["parked"],
+    },
+  },
+},
+derive: {
+  // Traffic FOLLOWS from the journey. A fourth switch would be a fourth way to lie.
+  hasTraffic: (ctx) => ctx.journey === "requestIn",
+}
+
+// Usage:
+const p = useScenario(scenario)
+
+if (!p.hasTraffic) return <Checklist step={p.step} keyIssued={p.keyIssued} />
+return <Dashboard since={p.firstRequestAt} />
+```
+
+From **First run** the panel offers only **Key made** and **Parked**. **Request
+in** is drawn and disabled — present, so the shape of the journey stays visible;
+dead, so nobody reviews a screen the product cannot produce.
+
+### Request: "add a role switcher and a density toggle"
+
+```tsx
+machines: {
+  role: {
+    label: "Role",
+    initial: "member",
+    states: {
+      admin:  { label: "Admin" },
+      member: { label: "Member" },
+      viewer: { label: "Viewer", note: "Read-only, no billing" },
+    },
+  },
+},
+fields: {
+  density: {
+    type: "enum",
+    label: "Density",
+    default: "comfortable",
+    options: ["comfortable", "compact"],
+    // Mirrored onto <html> so a stylesheet can read it, with nothing threaded
+    // through props.
+    dom: { attribute: "data-density" },
+  },
+}
+
+// Usage:
+const p = useScenario(scenario)
+
+{p.role === "admin" ? <BillingTab /> : null}
+```
+
+```css
+/* Usage, from plain CSS: */
+[data-density="compact"] .row { padding-block: 4px; }
+```
+
+### Request: "only show the seat control on the billing screen"
+
+```tsx
+fields: {
+  seats: {
+    type: "number",
+    label: "Seats",
+    default: 12,
+    min: 0,
+    max: 500,
+    control: "range",
+    // Keeps the row out of the panel everywhere it would mean nothing. `when`
+    // works on machines and actions too.
+    when: (env) => env.path === "/settings/billing",
+  },
+}
+
+// Usage: `when` sees whatever the provider was told about the route.
+<ScenarioProvider machine={scenario} storageKey="my-prototype-v1" path={pathname}>
+```
+
+### Request: "show me the shape of this journey, I keep losing track of what leads where"
+
+Nothing to configure — the diagram draws whatever the machines already declare.
+The button is in the panel's header, and `transitions` is what makes it worth
+opening:
+
+```tsx
+// Declared: drawn as a ranked graph, with the moves you cannot make from here
+// present but dead.
+journey: {
+  initial: "firstRun",
+  states: { parked: {}, firstRun: {}, keyMade: {}, active: {} },
+  transitions: {
+    parked: ["firstRun"],
+    firstRun: ["keyMade", "parked"],
+    keyMade: ["active", "firstRun"],
+    active: ["parked"],
+  },
+},
+
+// Omitted: drawn flat, no arrows, because a view control has no journey and
+// n*(n-1) arrows would say otherwise.
+data: {
+  initial: "real",
+  states: { real: {}, loading: {}, empty: {}, error: {} },
+},
+```
+
+```
++ - - - - - - [ GET CONNECTED ] - - - - - - -+
+|                                            |
+|   ┌           ┐                            |
+|     First run                              |
+|   └           ┘                            |
+|                                            |
+|         ╎                                  |
+|        ┌┴- - - - - - -┐                    |
+|        ▼              ▼                    |
+|   ┌        ┐    ┌          ┐               |
+|     Parked        Key made                 |
+|   └        ┘    └          ┘               |
+|    ↩ First run   ↩ First run               |
++ - - - - - - - - - - - - - - - - - - - - - -+
+  currently First run. legal from here: Key made, Parked.
+```
+
+### End to end: Next.js app router
+
+`path` and `navigate` are props rather than a router import, which is the whole
+reason this works the same in Next, Vite, React Router and Remix.
+
+```tsx
+// app/providers.tsx
+"use client"
+
+import { usePathname, useRouter } from "next/navigation"
+import { ScenarioPanel, ScenarioProvider } from "prototype-machine"
+import { scenario } from "@/scenario"
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const router = useRouter()
+
+  return (
+    <ScenarioProvider
+      machine={scenario}
+      storageKey="my-prototype-v1"
+      path={pathname}
+      navigate={(to) => router.push(to)}
+    >
+      {children}
+      <ScenarioPanel />
+    </ScenarioProvider>
+  )
+}
+
+// app/layout.tsx
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  )
+}
+```
+
+### End to end: driving a scenario from a test
+
+`prototype-machine/core` is the same resolver the panel uses, with no React in
+it — so a test can assert the model rather than clicking the UI that renders it.
+
+```ts
+import { resolve, toSearch } from "prototype-machine/core"
+import { scenario } from "./scenario"
+
+const early = resolve(scenario, [{ machines: { journey: "firstRun", data: "empty" } }])
+const ctx = scenario.contextOf(early)
+
+it("cannot reach a landed request before a key exists", () => {
+  expect(ctx.keyIssued).toBe(false)
+  expect(scenario.can("journey", "firstRun", "requestIn")).toBe(false)
+})
+
+// The same scenario as a link, for a bug report. Only what differs from the
+// defaults is spelled out, so you can see which axes actually matter:
+`/overview?${toSearch(scenario, early)}` // -> /overview?state=empty
+```
+
 ## Features
 
 - **Declared transitions** — an illegal move is refused by the API and disabled
@@ -131,13 +385,15 @@ visible.
   nothing else may write them.
 - **Parallel machines** — orthogonal axes (role, data state, journey) advance
   independently instead of exploding into a cross product.
-- **Scenario palette** — `⌘⇧P` for a filterable list of every state and action.
-  Unreachable ones are listed and disabled, with the reason.
-- **Undo / redo** — a capped history of the session, with readable labels and a
-  jump-to-any-point list. `⌘Z` inside the panel only; it never hijacks undo
-  globally.
-- **Copy for agents** — one button puts the whole scenario on the clipboard as
-  markdown, including the assigned tuple and a link that reproduces it.
+- **The space, drawn** — a monospace state diagram of every machine, with dead
+  moves visible but disabled. Declared journeys draw as ranked graphs; view
+  controls draw flat, because they have no shape to show. It **docks beside**
+  the app rather than over it, so the component you are reviewing stays visible
+  and clickable.
+- **Movable** — drag it out of the way of whatever it is covering, by the
+  launcher or by the panel's header. Release near a corner and it takes the
+  corner; release anywhere else and it stays exactly there. It remembers where
+  you put it, and it cannot be dropped off screen.
 - **Shareable by URL** — a scenario link beats whatever the recipient's browser
   had stored, so it lands the same way for everyone.
 - **SSR-safe** — server and first client render both produce the declared
@@ -207,23 +463,9 @@ so plain CSS can read it — how a density or theme switch reaches a stylesheet.
 | `navigate` | `(to: string) => void` | — | Router push, for actions. |
 | `env` | `Record<string, unknown>` | — | Anything else `when` should see. |
 | `enabled` | `boolean` | `NODE_ENV !== "production"` | Whether the controls mount. |
-| `historyLimit` | `number` | `50` | How many moves undo remembers. |
 
 Framework-agnostic on purpose: `path` and `navigate` are props, so it works the
-same in Next, Vite, React Router or Remix.
-
-```tsx
-// Next.js app router
-const pathname = usePathname()
-const router = useRouter()
-
-<ScenarioProvider
-  machine={scenario}
-  storageKey="my-prototype-v1"
-  path={pathname}
-  navigate={(to) => router.push(to)}
->
-```
+same in Next, Vite, React Router or Remix — see [Examples](#examples).
 
 ### `<ScenarioPanel>`
 
@@ -233,10 +475,9 @@ const router = useRouter()
 | `title` | `string` | `"Prototype controls"` | Heading. |
 | `zIndex` | `number` | `690` | High enough to clear your overlays, low enough to sit under anything that must never be covered. |
 | `hotkey` | `string \| null` | `"mod+."` | Toggle. `null` to unbind. |
-| `paletteHotkey` | `string \| null` | `"mod+shift+p"` | Open the palette. |
+| `diagramHotkey` | `string \| null` | `null` | Open the diagram. Unbound by default. |
+| `draggable` | `boolean` | `true` | Let the panel be moved and corner-snapped. `position` becomes where it starts. |
 | `inset` | `{ name, value }` | — | A CSS custom property set on `<html>` while mounted, so your own corner UI can move clear. |
-| `showHistory` | `boolean` | `true` | Show the session's moves. |
-| `onCopy` | `(markdown: string) => void` | — | Called with the report when the copy button is used. |
 | `enabled` | `boolean` | provider's | Override. |
 | `children` | `ReactNode` | — | Rendered at the foot — a theme switch, a link, whatever the config cannot express. |
 
@@ -260,25 +501,56 @@ is what a shared component deep in a component library wants.
 | `can` | `(machine, state) => boolean` | Is that move legal from here? |
 | `movesFrom` | `(machine) => string[]` | Legal moves from here. |
 | `reset` | `() => void` | Back to defaults, and forget what was stored. |
-| `undo` / `redo` | `() => void` | Step through the session. |
-| `canUndo` / `canRedo` | `boolean` | |
-| `jump` | `(index) => void` | Go to any point in `history`. |
-| `history` | `History` | `{ entries, index }`. |
 | `link` | `() => string` | A URL reproducing this scenario. |
-| `markdown` | `() => string` | The scenario, written out for a coding agent. |
-| `copy` | `() => Promise<boolean>` | `markdown()` to the clipboard. |
 | `snapshot` | `Snapshot` | The raw `{ machines, fields }`. |
 | `open` / `setOpen` | | Panel visibility, if you want your own trigger. |
+| `diagramOpen` / `setDiagramOpen` | | The diagram's visibility. |
+| `storageKey` | `string` | The provider's key, for namespacing beside it. |
 
 `useScenarioValue(machine, key)` reads one value, for a component that should not
 re-render when unrelated axes move.
 
+### Dragging, snapping and the dock
+
+The panel snaps to a corner when released **within 140px of one**, measured
+diagonally — so a drop 100px out on both axes is 141px away and stays put. A
+dashed outline previews the corner mid-drag. What is stored is the corner
+itself, so a snapped panel stays anchored through a window resize; a free drop
+stores pixels and is re-clamped instead.
+
+The diagram **docks to an edge with no backdrop**, so the component underneath
+stays visible and clickable — a diagram that explains a component must not be
+the thing hiding it. Resize it by its inner edge (320px to 92vw); drag its
+header to pull it free, and drop it near a side to re-dock. While docked it
+publishes `--pm-diagram-inset-right` (or `-left`) on `<html>`; the panel reads
+that and slides clear, and your own layout can too if you would rather reflow
+than be overlaid.
+
+```tsx
+<ScenarioPanel draggable diagramHotkey="mod+shift+d" />
+<ScenarioDiagram defaultDock="left" />
+```
+
+### Colour
+
+The diagram carries two accent tokens, both hue 268 so they read as one colour:
+
+| Token | Value | Used for |
+| --- | --- | --- |
+| `--pm-dg-accent` | `#7410ff` | Focus rings, the resize handle, snap and dock previews, borders |
+| `--pm-dg-accent-text` | `#a564ff` | The current state, the bracketed title, hovered nodes |
+
+They are split because `#7410ff` is 3:1 on the diagram's `#0d0d0d` ground —
+enough for a border under WCAG, short of the 4.5:1 that 13px monospace needs to
+be read comfortably. Override either on `.pm-dg` to collapse them back to one.
+
 ### `prototype-machine/core`
 
 Everything except the React bindings, with no React import: `defineMachine`,
-`compile`, `toSearch`, `fromSearch`, `toLink`, `toMarkdown`, `resolve`, the
-history reducers. Use it to drive a scenario from a test, a script, or a
-non-React adapter.
+`compile`, `toSearch`, `fromSearch`, `toLink`, `resolve`, and
+`layout` — the diagram as a character grid, if you want to draw a figure
+somewhere other than the overlay. Use it to drive a scenario from a test, a
+script, or a non-React adapter.
 
 ## Where a scenario comes from
 
@@ -312,6 +584,13 @@ not render in a production build. Context is still provided in every build —
 your screens read it everywhere, and a deployed review build should still honour
 a shared scenario link.
 
+Every bundler worth using replaces `process.env.NODE_ENV` at build time, in both
+dev and production. **Where nothing replaces it, the package assumes production
+and hides the controls.** That direction is deliberate: a panel that fails open
+puts a role switcher in a deployed build, which is far worse than one that fails
+closed. If you are in that position and you want the controls anyway — a review
+deployment, say — pass `enabled` explicitly.
+
 To keep the panel's *bytes* out of the bundle as well, alias the module to a stub
 in your production build. Some bundlers trace a dynamic import and ship the
 toolbar anyway:
@@ -329,6 +608,27 @@ if (process.env.NODE_ENV === "production") {
 ## Requirements
 
 React 18 or newer. The `/core` entry needs no React at all.
+
+### If you link this package by path
+
+Consuming it as `file:../prototype-machine/package` — which is how you would work
+on the panel and an app at the same time — resolves through a symlink, so your
+bundler may resolve `react` from *this* package's `node_modules` (it has one, for
+its own test suite) rather than from your app. You then have two copies of React,
+and the library's copy is null at runtime.
+
+Under Vite it breaks the **production build only** — dev dedupes on its own — so
+it is the kind of thing that ships. One line prevents it:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  resolve: { dedupe: ["react", "react-dom"] },
+})
+```
+
+Webpack's equivalent is `resolve.alias` pointing `react` at your app's copy.
+Installing from a registry rather than a path makes the problem disappear.
 
 ## Contributing
 

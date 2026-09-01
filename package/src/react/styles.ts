@@ -31,12 +31,23 @@ const CSS = `
   text-align: left;
   box-sizing: border-box;
 }
+/* The font is set on DESCENDANTS, not just the container, because a host page
+   with a universal font-family rule beats inheritance outright: a selector that
+   matches every element leaves nothing to inherit. Plenty of codebases have
+   exactly that rule, and it would quietly pull the product's own typeface into
+   a panel whose whole job is to look foreign. */
+.pm-root, .pm-root * {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
 .pm-root *, .pm-root *::before, .pm-root *::after { box-sizing: border-box; }
 
-.pm-bottom-right { right: 16px; bottom: 16px; }
-.pm-bottom-left  { left: 16px;  bottom: 16px; }
-.pm-top-right    { right: 16px; top: 16px; }
-.pm-top-left     { left: 16px;  top: 16px; }
+/* The corner anchors read the diagram's published inset, so opening a docked
+   diagram slides the panel clear of it instead of hiding it behind the thing it
+   was opened from. Zero when no diagram is docked, so this costs nothing. */
+.pm-bottom-right { right: calc(16px + var(--pm-diagram-inset-right, 0px)); bottom: 16px; }
+.pm-bottom-left  { left:  calc(16px + var(--pm-diagram-inset-left,  0px)); bottom: 16px; }
+.pm-top-right    { right: calc(16px + var(--pm-diagram-inset-right, 0px)); top: 16px; }
+.pm-top-left     { left:  calc(16px + var(--pm-diagram-inset-left,  0px)); top: 16px; }
 
 .pm-launcher {
   display: grid;
@@ -55,6 +66,23 @@ const CSS = `
 }
 .pm-launcher:hover { transform: scale(1.05); }
 .pm-launcher:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pm-launcher { touch-action: none; }
+.pm-dragging, .pm-dragging .pm-head { cursor: grabbing; }
+/* Only on the render after a release, so a resize-driven clamp never animates. */
+.pm-settling { transition: top 180ms cubic-bezier(0.22, 1, 0.36, 1), left 180ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Where a release right now would land. Predicted, not sprung on you. */
+.pm-snap-preview {
+  pointer-events: none;
+  border: 1px dashed #7410ff;
+  border-radius: 12px;
+  background: rgba(116, 16, 255, 0.08);
+}
+.pm-snap-launcher { width: 40px; height: 40px; border-radius: 9999px; }
+.pm-snap-panel { width: 288px; height: 120px; }
+/* A panel mid-drag should not also animate its own position. */
+.pm-dragging.pm-launcher { transition: none; }
+.pm-dragging.pm-launcher:hover { transform: none; }
 
 .pm-panel {
   width: 288px;
@@ -68,6 +96,13 @@ const CSS = `
 }
 
 .pm-head {
+  /* The drag handle when the panel is open. touch-action:none is not
+     optional: without it the browser claims the gesture for scrolling and the
+     drag arrives as a pointercancel halfway through. */
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -179,99 +214,155 @@ const CSS = `
 .pm-action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .pm-actions { display: grid; gap: 6px; margin-top: 4px; }
 
-.pm-foot {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  display: grid;
-  gap: 8px;
-}
-.pm-hint {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
-}
-.pm-hint kbd {
-  font: inherit;
-  font-size: 10px;
-  padding: 1px 4px;
-  border: 1px solid var(--pm-line);
-  border-radius: 3px;
-}
-
-.pm-history { display: grid; gap: 3px; margin-top: 2px; }
-.pm-history-item {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 3px 6px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.45);
-  font: inherit;
-  font-size: 11px;
-  text-align: left;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pm-history-item:hover { background: rgba(255, 255, 255, 0.08); color: var(--pm-fg); }
-.pm-history-item[aria-current="true"] { color: var(--pm-fg); background: rgba(255, 255, 255, 0.1); }
-
-/* The palette is its own layer, centred, and does not inherit the panel's
-   corner positioning. */
-.pm-palette-backdrop {
+/* The diagram does not share the panel's tokens. It is a technical figure —
+   near-black ground, monospace, dashed frames, one accent — and it should read
+   as something you would paste into a review rather than as part of the tool. */
+.pm-dg {
+  --pm-dg-bg: #0d0d0d;
+  --pm-dg-frame: rgba(255, 255, 255, 0.16);
+  --pm-dg-text: #b4b0a8;
+  /* The colour itself. 3:1 on the ground above — enough for a border or a
+     focus ring, which is all it paints. */
+  --pm-dg-accent: #7410ff;
+  /* The same hue lightened to 5.4:1, for the 13px monospace that has to be
+     READ: the current state, the bracketed title, a hovered node. */
+  --pm-dg-accent-text: #a564ff;
+  --pm-dg-dead: rgba(255, 255, 255, 0.22);
   position: fixed;
-  inset: 0;
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  padding-top: 12vh;
-  background: rgba(0, 0, 0, 0.4);
-}
-.pm-palette {
-  width: min(440px, calc(100vw - 32px));
-  max-height: 60vh;
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
-  background: var(--pm-bg);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  background: var(--pm-dg-bg);
+  color: var(--pm-dg-text);
+  /* No backdrop anywhere: the app behind stays visible AND clickable, which is
+     the entire point of docking rather than overlaying. */
+  box-shadow: 0 0 40px -8px rgba(0, 0, 0, 0.85);
+}
+.pm-dg-left  { border-right: 1px solid var(--pm-dg-frame); }
+.pm-dg-right { border-left: 1px solid var(--pm-dg-frame); }
+.pm-dg-free {
+  border: 1px solid var(--pm-dg-frame);
+  border-radius: 10px;
   overflow: hidden;
 }
-.pm-palette-input {
-  width: 100%;
-  padding: 12px 14px;
-  border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: transparent;
-  color: var(--pm-fg);
-  font: inherit;
-  font-size: 14px;
+/* While dragging or resizing, do not also fight the pointer for text. */
+.pm-dg-busy { user-select: none; -webkit-user-select: none; }
+
+.pm-dg-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 1;
 }
-.pm-palette-input:focus { outline: none; }
-.pm-palette-input::placeholder { color: rgba(255, 255, 255, 0.35); }
-.pm-palette-list { overflow-y: auto; padding: 6px; margin: 0; list-style: none; }
-.pm-palette-item {
+.pm-dg-right .pm-dg-resize { left: -3px; }
+.pm-dg-left  .pm-dg-resize { right: -3px; }
+.pm-dg-resize:hover, .pm-dg-busy .pm-dg-resize { background: var(--pm-dg-accent); }
+
+.pm-dg-edge-preview {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  border: 1px dashed #7410ff;
+  background: rgba(116, 16, 255, 0.08);
+}
+.pm-dg-edge-left  { left: 0; }
+.pm-dg-edge-right { right: 0; }
+/* Same reasoning, and it matters more here: a "monospace grid" rendered in the
+   host's proportional font is not a grid at all — every row is a different
+   width and the figure falls apart. Declared after the .pm-root rule above so
+   it wins on source order at equal specificity. */
+.pm-dg, .pm-dg * {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+.pm-dg-head {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 8px;
-  border: 0;
-  border-radius: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  padding: 14px 20px;
+  border-bottom: 1px dashed var(--pm-dg-frame);
+  /* The drag handle. touch-action:none or the browser claims the gesture. */
+  cursor: grab;
+  touch-action: none;
+}
+.pm-dg-busy .pm-dg-head { cursor: grabbing; }
+.pm-dg-head-actions { display: flex; align-items: center; gap: 6px; }
+.pm-dg-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+}
+.pm-dg-title {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pm-dg-dead);
+}
+.pm-dg-close {
+  margin: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--pm-dg-frame);
+  border-radius: 4px;
   background: transparent;
-  color: var(--pm-text);
+  color: var(--pm-dg-text);
   font: inherit;
-  font-size: 13px;
-  text-align: left;
+  font-size: 11px;
   cursor: pointer;
 }
-.pm-palette-item[data-active="true"] { background: rgba(255, 255, 255, 0.12); color: var(--pm-fg); }
-.pm-palette-group { color: var(--pm-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
-.pm-palette-note { margin-left: auto; color: rgba(255, 255, 255, 0.35); font-size: 11px; }
-.pm-palette-empty { padding: 16px; color: var(--pm-muted); font-size: 13px; text-align: center; }
+.pm-dg-close:hover { color: var(--pm-dg-accent-text); border-color: var(--pm-dg-accent); }
+.pm-dg-close:focus-visible { outline: 2px solid var(--pm-dg-accent); outline-offset: 2px; }
+
+.pm-dg-figure { margin-bottom: 28px; display: grid; justify-items: start; }
+.pm-dg-figure:last-child { margin-bottom: 0; }
+.pm-dg-grid {
+  margin: 0;
+  /* Wide figures scroll rather than forcing the page to — which needs the
+     max-width as well as the overflow, or the pre simply grows its parent. */
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: pre;
+  letter-spacing: 0.04em;
+}
+.pm-dg-row { min-height: 1.35em; }
+.pm-dg .pm-dg-frame  { color: var(--pm-dg-frame); }
+.pm-dg .pm-dg-text   { color: var(--pm-dg-text); }
+.pm-dg .pm-dg-dim    { color: rgba(255, 255, 255, 0.34); }
+.pm-dg .pm-dg-accent { color: var(--pm-dg-accent-text); }
+.pm-dg .pm-dg-dead   { color: var(--pm-dg-dead); }
+
+/* Inline and unpadded, so a button occupies exactly its own characters and the
+   monospace grid still lines up. */
+.pm-dg-node {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.pm-dg-node:disabled { cursor: default; }
+.pm-dg-node:not(:disabled):hover { color: var(--pm-dg-accent-text); text-decoration: underline; }
+.pm-dg-node:focus-visible { outline: 1px solid var(--pm-dg-accent); outline-offset: 1px; }
+
+.pm-dg-caption {
+  margin: 10px 0 0;
+  max-width: 100%;
+  font-size: 11px;
+  color: var(--pm-dg-dead);
+}
+.pm-dg-empty { margin: 0; font-size: 13px; color: var(--pm-dg-text); }
 
 .pm-sr {
   position: absolute;
@@ -284,7 +375,8 @@ const CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pm-root *, .pm-palette-backdrop * { transition: none !important; animation: none !important; }
+  .pm-root * { transition: none !important; animation: none !important; }
+  .pm-settling { transition: none !important; }
 }
 `
 
