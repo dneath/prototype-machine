@@ -1,10 +1,10 @@
 # prototype-machine
 
-A dev-only control panel that drives a React prototype through its states, declared as
-state machines so illegal combinations cannot be expressed. For designers and engineers
-who need to show a state that nobody can click their way to.
+A dev-only control panel for React prototypes. Declare the states your prototype can be
+in — empty, loading, first run, admin, trial expired — and get a panel that drives it.
+Combinations you never declared can't be set.
 
-Development-only. It renders nothing in production builds.
+Renders nothing in production.
 
 ## Quick start
 
@@ -12,7 +12,7 @@ Development-only. It renders nothing in production builds.
 npm install --save-exact prototype-machine -D
 ```
 
-Describe the scenario space once:
+**1. Describe the states.**
 
 ```ts
 // scenario.ts
@@ -20,28 +20,28 @@ import { defineMachine } from "prototype-machine"
 
 export const scenario = defineMachine({
   machines: {
-    journey: {
-      label: "Get connected",
-      initial: "firstRun",
+    account: {
+      label: "Account",
+      initial: "newUser",
       states: {
-        firstRun: { label: "First run", assign: { step: 1, keyIssued: false } },
-        keyMade: { label: "Key made", assign: { step: 2, keyIssued: true } },
-        active: { label: "Active", assign: { step: 3, keyIssued: true } },
+        newUser: { label: "New user", assign: { projects: 0, hasTeam: false } },
+        firstProject: { label: "First project", assign: { projects: 1, hasTeam: false } },
+        team: { label: "Team", assign: { projects: 8, hasTeam: true } },
       },
       transitions: {
-        firstRun: ["keyMade"],
-        keyMade: ["active", "firstRun"],
-        active: ["firstRun"],
+        newUser: ["firstProject"],
+        firstProject: ["team", "newUser"],
+        team: ["newUser"],
       },
     },
   },
   fields: {
-    hasEvents: { type: "boolean", label: "Events", default: true },
+    loading: { type: "boolean", label: "Loading", default: false },
   },
 })
 ```
 
-Mount the provider and the panel once, at the root:
+**2. Mount the provider and the panel once, at the root.**
 
 ```tsx
 // main.tsx
@@ -58,130 +58,133 @@ export function Root() {
 }
 ```
 
-Read the scenario in any screen:
+**3. Read it in any screen.**
 
 ```tsx
 import { useScenario } from "prototype-machine"
 import { scenario } from "./scenario"
 
-export function Overview() {
+export function Projects() {
   const p = useScenario(scenario)
 
-  if (p.step < 2) return <Checklist step={p.step} />
-  return <Dashboard events={p.hasEvents} />
+  if (p.loading) return <Skeleton />
+  if (p.projects === 0) return <EmptyState />
+  return <ProjectList count={p.projects} team={p.hasTeam} />
 }
 ```
 
-A button appears in the bottom-right corner. Click it to open the panel; drag it to move
-it. No stylesheet to import, no build-step change.
+A button appears in the bottom-right corner. Click it to open the panel, drag it to move
+it. No stylesheet to import, no build config to change.
 
-## The idea
+## Machines and fields
 
-A **machine** is a journey. One of its states is current, and that state writes a whole
-tuple of context at once. A **field** is an independent axis that varies freely and means
-nothing to the others.
+Two kinds of control, and choosing between them is most of the work.
 
-That distinction is the whole point. Two independent booleans can be driven into a
-combination the product cannot produce — a request arriving on a key that was never
-issued. Put the keys that move together into a machine and that combination stops being
-expressible: `go()` refuses an undeclared move, and the panel draws it
-present-but-disabled so a reviewer can see it exists and see it is not reachable.
+| | What it is | Example |
+| --- | --- | --- |
+| **Machine** | A journey. One state is current, and it writes several context values at once. | new user → first project → team |
+| **Field** | A free axis that varies on its own and means nothing to the others. | dark mode, role, unread count |
 
-Everything else follows from it:
+Values that move together belong in one machine. Then "8 projects but no team" stops
+being something a reviewer can click into: `go()` refuses a move you never declared, and
+the panel draws it disabled — visible, but not reachable.
 
-- **Transitions** declare the legal moves. Omit them and you have a view control instead
-  of a journey — every state one click away.
-- **Derived values** are computed from context, never stored, so they cannot disagree
-  with what produced them.
-- **Fields** come in five types: boolean, enum, number, string and date. A boolean or
-  enum can mirror itself onto the DOM as an attribute for CSS to read.
-- **Actions** are buttons at the foot of the panel for the things a control cannot say.
-- **`when`** keeps a control off the panel on screens where it would be meaningless.
+- **Transitions** declare the legal moves. Omit them and every state is one click from
+  every other: a switch, not a journey.
+- **Fields** are `boolean`, `enum`, `number`, `string` or `date`. A boolean or enum can
+  mirror itself onto `<html>` as an attribute, so plain CSS can read it.
+- **Derived values** are computed from context, never stored, so they can't disagree
+  with it.
+- **Actions** are buttons at the foot of the panel, for what a control can't say.
+- **`when`** hides a control on screens where it would be meaningless.
 
 ## What you get
 
-**A panel.** Deliberately foreign — dark slab, system font, no design tokens — so it
-never becomes part of a screenshot or part of the critique. Drag it by the launcher or
-the header; release near a corner and it snaps.
+**A panel.** Dark, plain and deliberately unlike your app, so it never becomes part of a
+screenshot or part of the critique. Drag it by the launcher or the header; drop it near
+a corner and it snaps.
 
-**A state diagram.** The panel's header draws the scenario space as an ASCII grid, one
-figure per machine, current state highlighted and unreachable moves drawn dead. Clicking
-a node is the same as `go()`. It docks to an edge rather than covering the viewport.
+**A state diagram.** One figure per machine, drawn from the config, current state
+highlighted and illegal moves dead. Clicking a node is the same as `go()`. It docks to an
+edge instead of covering the app.
 
 ```
-+ - - - - - - [ GET CONNECTED ] - - - - - - -+
++ - - - - - - -  [ ACCOUNT ]  - - - - - - - -+
 |                                            |
-|   ┌           ┐                            |
-|     First run                              |
-|   └           ┘                            |
+|   ┌          ┐                             |
+|     New user                               |
+|   └          ┘                             |
+|                                            |
 |         ╎                                  |
-|        ┌┴- - - - - - -┐                    |
-|        ▼              ▼                    |
-|   ┌        ┐    ┌          ┐               |
-|     Parked        Key made                 |
-|   └        ┘    └          ┘               |
-|    ↩ First run   ↩ First run               |
+|         └ ┐                                |
+|           ▼                                |
+|   ┌               ┐                        |
+|     First project                          |
+|   └               ┘                        |
+|    ↩ New user                              |
+|           ╎                                |
+|       ┌ - ┘                                |
+|       ▼                                    |
+|   ┌      ┐                                 |
+|     Team                                   |
+|   └      ┘                                 |
+|    ↩ New user                              |
 |                                            |
 + - - - - - - - - - - - - - - - - - - - - - -+
 
-currently First run. legal from here: Key made, Parked.
+currently New user. legal from here: First project.
 ```
 
-**Shareable links.** `p.link()` builds a URL that reproduces exactly what is on screen.
-A scenario resolves in four layers, each beating the one before:
+**Shareable links.** `p.link()` returns a URL that reproduces what's on screen. A
+scenario resolves in four layers, each beating the one before:
 
 ```
 config defaults  <  localStorage  <  the URL  <  this session's clicks
 ```
 
-**A React-free core.** `prototype-machine/core` has no React import, so a test or a
-script can build a scenario and assert on it.
+**A React-free core.** `prototype-machine/core` imports no React, so a test or a script
+can build a scenario and assert on it.
 
 ## Example prompts
 
-The repository ships an agent skill — [`SKILL.md`](SKILL.md) and
-[`reference/`](reference) — that teaches a coding agent to model a scenario space and
-wire the panel. With it installed, these are the kinds of things worth asking for.
+The repo ships an agent skill — [`SKILL.md`](SKILL.md) and [`reference/`](reference) —
+that teaches a coding agent to model a scenario space and wire the panel. With it
+installed, these are the kinds of things to ask for.
 
-**Starting out**
+**Setting up**
 
-> Set up prototype-machine in this prototype. Model the onboarding journey from the
-> screens in `src/routes/` and mount the panel at the root.
+> Add prototype-machine to this prototype and mount the panel at the root.
 
-> I want to demo this dashboard in three data states — loading, empty and error — without
-> touching the fetch. Add a control for it.
+> Model the screens in `src/routes/onboarding/` as a machine so I can step through them
+> from the panel.
 
-**Modelling a hard state**
+**Showing a state you can't click to**
 
-> I need to show the state where the API key exists but the first request hasn't landed
-> yet. Add it to the journey and make sure you can't get there from first run.
+> Add a control that flips the dashboard between loading, empty, error and populated,
+> without touching the fetch.
 
-> The trial-expired state should only be reachable from active, never from first run.
-> Fix the transitions.
+> I need to demo the trial-expired screen. Make it a state I can jump to.
 
-**Fixing a panel that lies**
+**Switching who's looking**
 
-> This prototype has a `useState` panel of toggles in `DevControls.tsx` and half the
-> combinations are impossible. Move it to prototype-machine and group the ones that move
-> together.
+> Add a role switcher — admin, member, viewer — and hide the billing section for anyone
+> but admin.
 
-> Someone set "has billing" without "has org" and got a screen we can't ship. Make that
-> unexpressible.
+> Add a first-run vs returning-user switch for the home screen.
 
-**Personas and axes**
+**Ruling out impossible states**
 
-> Add a role switcher — standard user, admin, support — and hide the billing controls
-> for anyone but admin.
+> The toggles in `DevControls.tsx` let me set "has billing" without "has org". Move them
+> to prototype-machine so that can't happen.
 
-> Add a density toggle that drives CSS from an attribute on `<html>`, not React props.
+> Trial expired should only be reachable from active, never from new user. Fix the
+> transitions.
 
-**Sharing and review**
+**Sharing and screenshots**
 
-> Give me a link to the exact scenario I'm looking at, and add a copy-link button to the
-> panel.
+> Give me a link to the exact state on screen so I can paste it into Slack.
 
-> Write a test that resolves the scenario at "key made" and asserts the checklist renders
-> at step 2.
+> Add a control for the unread count so I can screenshot it at 0, 1 and 99+.
 
 ## Documentation
 
@@ -200,12 +203,12 @@ Two things worth knowing before you ship a review build:
 
 ## Contributing
 
-1. Open an issue before a pull request.
-2. Keep pull requests atomic — one bug fix, one feature, or one refactor.
-3. No new runtime dependencies. The package has zero, and that is a feature.
-4. Edit the README at the repository root. `package/README.md` is generated from it on
-   publish and is not tracked.
-5. `npm test`, `npm run typecheck` and `npm run build` all pass before a PR.
+- **Open an issue first.** Pull requests should reference one.
+- **Keep pull requests small.** One bug fix, one feature, or one refactor.
+- **No new runtime dependencies.** The package has zero, and that's a feature.
+- **Edit the README at the repo root.** `package/README.md` is generated from it on
+  publish and isn't tracked.
+- **`npm test`, `npm run typecheck` and `npm run build` all pass** before a PR.
 
 ```bash
 cd package
