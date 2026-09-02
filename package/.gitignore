@@ -2,3 +2,6 @@ node_modules
 dist
 *.tgz
 .DS_Store
+
+# Generated from the root README by `npm run prepack`. Edit ../README.md.
+README.md

@@ -1,6 +1,6 @@
 {
-  "$comment": "Machine-readable catalogue for prototype-machine 0.1.0. Human docs: ../reference/api.md",
-  "version": "0.1.0",
+  "$comment": "Machine-readable catalogue for prototype-machine 0.6.0. Human docs: ./api.md",
+  "version": "0.6.0",
   "kinds": {
     "machine": {
       "description": "A journey. One state is current; each state writes a whole tuple of context via `assign`. Use when moving one value alone would produce a state the product cannot be in.",
@@ -169,9 +169,9 @@
     "URL",
     "session edits"
   ],
+  "opensOnly": "a click on the launcher button; there is no keyboard shortcut that opens the panel, and no prop to bind one",
   "keyboard": {
-    "mod+.": "toggle the panel",
-    "Escape": "close the diagram if open, otherwise the panel",
+    "Escape": "close the diagram if open, otherwise close the panel",
     "arrows": "nudge the panel while its handle has focus; shift for a bigger step",
     "drag near a corner": "snap the panel to it (within 140px)",
     "drag near a side": "dock the diagram to it (within 64px)"
