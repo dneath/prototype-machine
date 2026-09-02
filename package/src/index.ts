@@ -38,7 +38,6 @@ export {
   type UseDockResult,
 } from "./react/dock"
 export { FieldRow, MachineRow, Pill, Row } from "./react/controls"
-export { formatBinding, isTypingTarget, parseBinding, useHotkey } from "./react/hotkeys"
 export { injectStyles, styles } from "./react/styles"
 
 export * from "./core/index"
