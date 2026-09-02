@@ -90,8 +90,8 @@ function Screen({ path, navigate }: { path: string; navigate: (to: string) => vo
 
       <p className="muted">
         The journey is a ladder: from <b>First run</b> only <b>Key made</b> and{" "}
-        <b>Parked</b> are legal, so <b>Active</b> is drawn but dead. Press{" "}
-        <kbd>⌘.</kbd> for the panel.
+        <b>Parked</b> are legal, so <b>Active</b> is drawn but dead. Open the
+        controls with the button in the corner.
       </p>
     </main>
   )
