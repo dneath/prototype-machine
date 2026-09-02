@@ -8,7 +8,6 @@ import { FieldRow, MachineRow } from "./controls"
 import { CloseIcon, DiagramIcon, NodesIcon } from "./icons"
 import { ScenarioDiagram } from "./diagram"
 import { useDrag } from "./drag"
-import { formatBinding, useHotkey } from "./hotkeys"
 import { useScenario } from "./use-scenario"
 import { injectStyles } from "./styles"
 
@@ -25,13 +24,6 @@ export interface ScenarioPanelProps {
    * banner, a cookie wall you are legally obliged to show).
    */
   zIndex?: number
-  /** Toggle the panel. Default "mod+.". Pass null to unbind. */
-  hotkey?: string | null
-  /**
-   * Open the state diagram. Unbound by default — the panel already owns one
-   * global key and a dev tool should not quietly claim a second.
-   */
-  diagramHotkey?: string | null
   /**
    * Let the panel be dragged anywhere. `position` stays the corner it starts
    * in. Default true.
@@ -60,8 +52,6 @@ export function ScenarioPanel({
   position = "bottom-right",
   title = "Prototype controls",
   zIndex = 690,
-  hotkey = "mod+.",
-  diagramHotkey = null,
   draggable = true,
   inset,
   enabled,
@@ -79,9 +69,6 @@ export function ScenarioPanel({
   const restoreFocus = React.useRef(false)
 
   injectStyles()
-
-  useHotkey(hotkey, () => p.setOpen(!p.open), active)
-  useHotkey(diagramHotkey, () => p.setDiagramOpen(!p.diagramOpen), active)
 
   const drag = useDrag({
     storageKey: p.storageKey,
@@ -171,7 +158,7 @@ export function ScenarioPanel({
           className={`pm-root${corner} pm-launcher${dragClass}`}
           style={{ zIndex, ...offset }}
           onClick={() => p.setOpen(true)}
-          aria-label={`Open ${title.toLowerCase()}${hotkey ? ` (${formatBinding(hotkey)})` : ""}${draggable ? ", or drag to move it" : ""}`}
+          aria-label={`Open ${title.toLowerCase()}${draggable ? ", or drag to move it" : ""}`}
           {...(draggable ? drag.handleProps : {})}
         >
           <NodesIcon size={20} />
@@ -216,7 +203,7 @@ export function ScenarioPanel({
             className="pm-icon-button"
             onClick={() => p.setDiagramOpen(true)}
             aria-label="Show the state diagram"
-            title={`Draw this scenario's state space${diagramHotkey ? ` (${formatBinding(diagramHotkey)})` : ""}`}
+            title="Draw this scenario's state space"
           >
             <DiagramIcon size={14} />
           </button>

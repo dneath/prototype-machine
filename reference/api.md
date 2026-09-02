@@ -1,6 +1,6 @@
 # API reference
 
-**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.5.0.
+**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.6.0.
 
 For *how to model* a scenario space, read [recipes.md](recipes.md) first. This file is
 the exhaustive surface.
@@ -17,7 +17,6 @@ the exhaustive surface.
 - [useScenario](#usescenario)
 - [The core entry](#the-core-entry)
 - [Errors and warnings](#errors-and-warnings)
-- [Keyboard](#keyboard)
 
 ---
 
@@ -138,8 +137,6 @@ needs `suppressHydrationWarning`.
 | `position` | `"bottom-right" \| "bottom-left" \| "top-right" \| "top-left"` | `"bottom-right"` |
 | `title` | `string` | `"Prototype controls"` |
 | `zIndex` | `number` | `690` |
-| `hotkey` | `string \| null` | `"mod+."` |
-| `diagramHotkey` | `string \| null` | `null` |
 | `draggable` | `boolean` | `true` |
 | `inset` | `{ name: string; value: string }` | — |
 | `enabled` | `boolean` | the provider's |
@@ -157,7 +154,7 @@ covered, like a mandated classification banner.
 ### Dragging and snapping
 
 `position` is where the panel *starts*. Drag the launcher anywhere, or the expanded
-panel by its header; buttons and inputs inside the header are excluded, so a copy click
+panel by its header; buttons and inputs inside the header are excluded, so a button click
 is never a drag.
 
 **Release within 140px of a corner and it takes the corner** — measured diagonally, so a
@@ -182,7 +179,7 @@ value. `draggable={false}` turns all of it off.
 ## ScenarioDiagram
 
 The declared state space, drawn as a monospace figure **beside** the app. Opened from the
-panel's header button, from `diagramHotkey` if you bind one, or mounted yourself.
+panel's header button, or mounted yourself.
 
 | Prop | Type | Default |
 | --- | --- | --- |
@@ -268,11 +265,17 @@ import { defineMachine, layout, toSearch, fromSearch, resolve } from "prototype-
 ```
 
 No React import anywhere in it. Use it in tests, scripts, or a non-React adapter:
-`compile`, `defineMachine`, `isValidFieldValue`, `optionsOf`, `visible`, `toSearch`,
-`fromSearch`, `toLink`, `readStorage`, `writeStorage`, `clearStorage`, `resolve`,
-`layout`. The React entry additionally exports the snapping and
-docking primitives — `snapTarget`, `cornerPosition`, `clampToViewport`, `edgeTarget`,
-`useDrag`, `useDock` — which are pure and testable without a DOM.
+`compile`, `defineMachine`, `isDev`, `isValidFieldValue`, `optionsOf`, `ScenarioError`,
+`visible`, `warn`, `clearStorage`, `fromSearch`, `readStorage`, `resolve`, `toLink`,
+`toSearch`, `writeStorage`, `layout` — plus every type in the schema. The React entry
+additionally exports the snapping and docking primitives — `snapTarget`,
+`cornerPosition`, `clampToViewport`, `edgeTarget`, `useDrag`, `useDock` — which are pure
+and testable without a DOM.
+
+A compiled machine is itself usable without React. `scenario.contextOf(snapshot)` returns
+the flat object a screen would read; `scenario.can(machineId, from, to)` takes an explicit
+`from`, unlike the hook's version, which is relative to the current state;
+`scenario.movesFrom(machineId, from)` and `scenario.sanitize(partial)` round it out.
 
 `layout(machine, machineId, currentState)` returns the diagram as a character grid —
 `{ rows: Cell[][] }` where each `Cell` carries its glyph, a kind for colouring, and the
@@ -305,15 +308,16 @@ model, so do not swallow them.
 
 ## Keyboard
 
+The panel opens **only** from a click on its launcher button. There is no global shortcut
+that reveals it, and no prop to bind one — a dev tool should not claim a key on a page it
+is only visiting, and a reviewer who has not been told a shortcut exists cannot use it
+anyway.
+
 | Binding | Does |
 | --- | --- |
-| `mod+.` | Toggle the panel |
-| `Esc` | Close the diagram if it is open, otherwise the panel |
-| drag near a corner | Snap the panel to it (140px) |
-| drag near a side | Dock the diagram to it (64px) |
+| `Esc` | Close the diagram if it is open, otherwise close the panel |
 | `↑` `↓` `←` `→` | Nudge the panel 8px while its handle has focus |
 | `shift` + arrows | Nudge 32px |
 
-`mod` is Command on Apple platforms, Control elsewhere. No binding fires while focus is
-in an input, textarea, select or contenteditable — a panel that opens because a reviewer
-typed a full stop in a search box is worse than no shortcut.
+Closing returns focus to the launcher, so a keyboard user does not have to start over
+from `<body>`.

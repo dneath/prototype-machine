@@ -61,14 +61,14 @@ and to wire the panel that drives it.
 
 ## Setup check
 
-This guidance targets **prototype-machine 0.5.0**.
+This guidance targets **prototype-machine 0.6.0**.
 
 1. Read the project's `package.json` and lockfile before touching anything. Check
    whether `prototype-machine` is already installed and at which version.
 2. **Never add or upgrade a dependency silently.** If the user authorises it, pin the
    version:
    ```bash
-   npm install --save-exact prototype-machine@0.5.0 -D
+   npm install --save-exact prototype-machine@0.6.0 -D
    ```
 3. **Never copy the package's source into the app.** It is an npm dependency, not a
    snippet to paste. If the user wants to modify it, they change the package.
@@ -114,7 +114,9 @@ if (p.data === "loading") return <Skeleton />
 if (!p.hasTraffic) return <Checklist step={p.step} />
 ```
 
-No stylesheet import, no Tailwind config, no build-step change.
+No stylesheet import, no Tailwind config, no build-step change. The panel collapses
+to a button in the corner and opens on a click — it binds no keyboard shortcut, so do
+not tell anyone to press one.
 
 ## Routing
 
@@ -157,11 +159,11 @@ No stylesheet import, no Tailwind config, no build-step change.
    remembers where it was put. Do not reintroduce a fixed corner as the only option.
    For the same reason the diagram DOCKS beside the app rather than over it, and draws no
    backdrop — a figure explaining a component must not be the thing hiding it.
-10. **If it is not a state of the component, it is a field.** A theme switch, a density
-    toggle, a locale — these vary freely, write no tuple and mean nothing to the machines.
-    Modelling one as a machine puts it in the state diagram beside the real states, which
-    is how a reviewer ends up reading "light / dark" as part of a journey. Fields are kept
-    out of the diagram deliberately; use one.
-9. **`transitions` is what makes the diagram worth opening.** A machine without them draws
-   as a flat row, which is correct and also uninformative. If the thing you are modelling
-   really is a journey, declaring the map is what makes its shape visible.
+9. **If it is not a state of the component, it is a field.** A theme switch, a density
+   toggle, a locale — these vary freely, write no tuple and mean nothing to the machines.
+   Modelling one as a machine puts it in the state diagram beside the real states, which
+   is how a reviewer ends up reading "light / dark" as part of a journey. Fields are kept
+   out of the diagram deliberately; use one.
+10. **`transitions` is what makes the diagram worth opening.** A machine without them
+    draws as a flat row, which is correct and also uninformative. If the thing you are
+    modelling really is a journey, declaring the map is what makes its shape visible.
