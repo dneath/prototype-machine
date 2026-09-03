@@ -13,7 +13,6 @@ the exhaustive surface.
 - [Actions](#actions)
 - [ScenarioProvider](#scenarioprovider)
 - [ScenarioPanel](#scenariopanel)
-- [ScenarioDiagram](#scenariodiagram)
 - [useScenario](#usescenario)
 - [The core entry](#the-core-entry)
 - [Errors and warnings](#errors-and-warnings)
@@ -56,7 +55,7 @@ Context is the union of four things, and no two of them may share a name:
 | `hidden` | `boolean` | no | In context, URL and storage; out of the panel. |
 
 `MachineStateDef` is `{ label?, note?, assign? }`. `assign` is the tuple this state
-writes into context; `note` is the tooltip and is quoted in the diagram's caption.
+writes into context; `note` is the tooltip.
 
 ### transitions
 
@@ -176,56 +175,6 @@ the handle has focus, and always produce a free placement — someone pressing a
 is aiming. Double-click the handle to send it back to `position` and forget the stored
 value. `draggable={false}` turns all of it off.
 
-## ScenarioDiagram
-
-The declared state space, drawn as a monospace figure **beside** the app. Opened from the
-panel's header button, or mounted yourself.
-
-| Prop | Type | Default |
-| --- | --- | --- |
-| `zIndex` | `number` | `691` |
-| `defaultDock` | `"right" \| "left" \| "free"` | `"right"` |
-| `draggable` | `boolean` | `true` |
-
-### Where it sits
-
-It **docks to an edge and draws no backdrop**, so the component underneath stays visible
-and clickable. A diagram that explains a component must not be the thing hiding it. Being
-non-modal, it carries no `aria-modal`.
-
-- **Resize** it by the handle on its inner edge, between 320px and 92% of the viewport.
-- **Drag its header** to pull it free; drop within 64px of the left or right edge to
-  re-dock, or anywhere else to leave it floating — where the panel's own 140px corner
-  snapping then applies. Edge beats corner, because for a full-height pane the edge *is*
-  the anchor. A floating pane has a `dock` button to put it back.
-- Double-click the header to reset it to `defaultDock` at its default width.
-- State lives under `` `${storageKey}:pm-diagram` ``.
-
-While docked it sets `--pm-diagram-inset-right` (or `-left`) on `<html>`. The panel reads
-it and slides clear automatically; your own layout can read it too if you would rather
-reflow than be overlaid.
-
-One figure per visible machine. Fields are deliberately absent — they are free axes, not
-states, and drawing them here would blur the distinction the model exists to make.
-
-Two layouts, chosen by whether `transitions` was declared:
-
-| Machine | Drawn as |
-| --- | --- |
-| `transitions` declared | A ranked graph. Rank is a row, forward edges share one trunk per source, and the current state is accented. |
-| `transitions` omitted | A flat row, no arrows, captioned "any state is one click from any other". |
-
-Drawing a transition-less control as a graph would mean n*(n-1) arrows carrying no
-information, so it is not drawn that way.
-
-Edges that run against the rank order — back edges and rank skips — are listed as
-`↩ target` text under their source rather than routed around the figure, and collapse to
-`↩ n more` when the list will not fit. Clicking a node moves the machine; a node you
-cannot legally reach is drawn and disabled, so the shape of the journey stays visible.
-
-Motion fires only on a transition: the travelled edge is revealed cell by cell and the
-arriving label types in. `prefers-reduced-motion` skips to the final frame.
-
 ## useScenario
 
 ```ts
@@ -250,7 +199,6 @@ Returns context and the API on one object.
 | `hydrated` | `boolean` | |
 | `enabled` | `boolean` | |
 | `open` / `setOpen` | | For your own trigger. |
-| `diagramOpen` / `setDiagramOpen` | | The state diagram's visibility. |
 | `storageKey` | `string` | The provider's own key, for namespacing beside it. |
 
 `useScenarioValue(machine, key)` reads one value.
@@ -261,25 +209,20 @@ throws if it tries.
 ## The core entry
 
 ```ts
-import { defineMachine, layout, toSearch, fromSearch, resolve } from "prototype-machine/core"
+import { defineMachine, toSearch, fromSearch, resolve } from "prototype-machine/core"
 ```
 
 No React import anywhere in it. Use it in tests, scripts, or a non-React adapter:
 `compile`, `defineMachine`, `isDev`, `isValidFieldValue`, `optionsOf`, `ScenarioError`,
 `visible`, `warn`, `clearStorage`, `fromSearch`, `readStorage`, `resolve`, `toLink`,
-`toSearch`, `writeStorage`, `layout` — plus every type in the schema. The React entry
-additionally exports the snapping and docking primitives — `snapTarget`,
-`cornerPosition`, `clampToViewport`, `edgeTarget`, `useDrag`, `useDock` — which are pure
-and testable without a DOM.
+`toSearch`, `writeStorage` — plus every type in the schema. The React entry additionally
+exports the snapping primitives — `snapTarget`, `cornerPosition`, `clampToViewport`,
+`useDrag` — which are pure and testable without a DOM.
 
 A compiled machine is itself usable without React. `scenario.contextOf(snapshot)` returns
 the flat object a screen would read; `scenario.can(machineId, from, to)` takes an explicit
 `from`, unlike the hook's version, which is relative to the current state;
 `scenario.movesFrom(machineId, from)` and `scenario.sanitize(partial)` round it out.
-
-`layout(machine, machineId, currentState)` returns the diagram as a character grid —
-`{ rows: Cell[][] }` where each `Cell` carries its glyph, a kind for colouring, and the
-node or edge it belongs to. Use it to render a figure somewhere other than the overlay.
 
 ## Errors and warnings
 
@@ -315,7 +258,7 @@ anyway.
 
 | Binding | Does |
 | --- | --- |
-| `Esc` | Close the diagram if it is open, otherwise close the panel |
+| `Esc` | Close the panel |
 | `↑` `↓` `←` `→` | Nudge the panel 8px while its handle has focus |
 | `shift` + arrows | Nudge 32px |
 

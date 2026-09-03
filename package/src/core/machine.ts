@@ -56,7 +56,7 @@ function warn(message: string) {
 export const RESERVED = new Set([
   "set", "go", "can", "movesFrom", "reset", "link", "snapshot", "machine",
   "storageKey", "env", "navigate", "open", "setOpen",
-  "diagramOpen", "setDiagramOpen", "hydrated", "enabled",
+  "hydrated", "enabled",
 ])
 
 export class ScenarioError extends Error {
