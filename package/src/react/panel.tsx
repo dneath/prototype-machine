@@ -5,8 +5,7 @@ import * as React from "react"
 import { visible } from "../core/machine"
 import { type ActionApi } from "../core/schema"
 import { FieldRow, MachineRow } from "./controls"
-import { CloseIcon, DiagramIcon, NodesIcon } from "./icons"
-import { ScenarioDiagram } from "./diagram"
+import { CloseIcon, NodesIcon } from "./icons"
 import { useDrag } from "./drag"
 import { useScenario } from "./use-scenario"
 import { injectStyles } from "./styles"
@@ -112,11 +111,9 @@ export function ScenarioPanel({
   }, [active, inset])
 
   /* Escape and click-outside, which the hand-rolled version of this panel
-     always forgets. The diagram owns both while it is open: a click on a node
-     in the overlay is not a click "outside the panel" in any sense the
-     reviewer means. */
+     always forgets. */
   React.useEffect(() => {
-    if (!active || !p.open || p.diagramOpen || typeof document === "undefined") return
+    if (!active || !p.open || typeof document === "undefined") return
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !event.defaultPrevented) {
@@ -137,7 +134,7 @@ export function ScenarioPanel({
       document.removeEventListener("keydown", onKeyDown)
       document.removeEventListener("pointerdown", onPointerDown, true)
     }
-  }, [active, p, p.open, p.diagramOpen])
+  }, [active, p, p.open])
 
   React.useEffect(() => {
     if (p.open || !restoreFocus.current) return
@@ -170,7 +167,6 @@ export function ScenarioPanel({
             style={{ zIndex: zIndex - 1 }}
           />
         ) : null}
-        {p.diagramOpen ? <ScenarioDiagram zIndex={zIndex + 1} /> : null}
       </>
     )
   }
@@ -198,15 +194,6 @@ export function ScenarioPanel({
       <div className="pm-head" {...(draggable ? drag.handleProps : {})}>
         <span className="pm-title">{title}</span>
         <div className="pm-head-actions">
-          <button
-            type="button"
-            className="pm-icon-button"
-            onClick={() => p.setDiagramOpen(true)}
-            aria-label="Show the state diagram"
-            title="Draw this scenario's state space"
-          >
-            <DiagramIcon size={14} />
-          </button>
           <button
             type="button"
             className="pm-icon-button"
@@ -258,7 +245,6 @@ export function ScenarioPanel({
         style={{ zIndex: zIndex - 1 }}
       />
     ) : null}
-    {p.diagramOpen ? <ScenarioDiagram zIndex={zIndex + 1} /> : null}
     </>
   )
 }

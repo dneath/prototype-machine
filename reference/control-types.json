@@ -13,7 +13,7 @@
         "states": {
           "type": "Record<string, {label?, note?, assign?}>",
           "required": true,
-          "description": "`assign` is the tuple this state writes. `note` is the tooltip and is quoted in the diagram."
+          "description": "`assign` is the tuple this state writes. `note` is the tooltip."
         },
         "transitions": {
           "type": "Record<string, string[]>",
@@ -158,8 +158,6 @@
     "navigate",
     "open",
     "setOpen",
-    "diagramOpen",
-    "setDiagramOpen",
     "hydrated",
     "enabled"
   ],
@@ -171,9 +169,8 @@
   ],
   "opensOnly": "a click on the launcher button; there is no keyboard shortcut that opens the panel, and no prop to bind one",
   "keyboard": {
-    "Escape": "close the diagram if open, otherwise close the panel",
+    "Escape": "close the panel",
     "arrows": "nudge the panel while its handle has focus; shift for a bigger step",
-    "drag near a corner": "snap the panel to it (within 140px)",
-    "drag near a side": "dock the diagram to it (within 64px)"
+    "drag near a corner": "snap the panel to it (within 140px)"
   }
 }

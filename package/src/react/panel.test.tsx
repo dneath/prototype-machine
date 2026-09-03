@@ -72,64 +72,6 @@ describe("the panel", () => {
     expect(screen.getByRole("button", { name: "Key made" }).hasAttribute("disabled")).toBe(false)
   })
 
-  it("opens the state diagram, and draws both kinds of machine", async () => {
-    const user = userEvent.setup()
-    mount()
-    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
-    await user.click(screen.getByRole("button", { name: /show the state diagram/i }))
-
-    const diagram = await screen.findByRole("dialog", { name: "Scenario diagram" })
-    expect(diagram).toBeTruthy()
-    /* A declared journey draws arrowheads; a transition-less control does not. */
-    expect(diagram.textContent).toContain("▼")
-    expect(diagram.textContent).toContain("no transitions declared")
-  })
-
-  it("moves a machine from the diagram, and refuses an illegal node", async () => {
-    const user = userEvent.setup()
-    mount()
-    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
-    await user.click(screen.getByRole("button", { name: /show the state diagram/i }))
-
-    const diagram = await screen.findByRole("dialog", { name: "Scenario diagram" })
-    const nodes = Array.from(diagram.querySelectorAll("button.pm-dg-node"))
-    const named = (label: string) =>
-      nodes.find((b) => b.textContent?.trim() === label) as HTMLButtonElement
-
-    /* firstRun -> active is not declared, so the node is drawn but dead. */
-    expect(named("Active").disabled).toBe(true)
-
-    await user.click(named("Key made"))
-    expect(screen.getByTestId("journey").textContent).toBe("keyMade")
-  })
-
-  it("does not cover the app: no backdrop, and not modal", async () => {
-    /* The diagram exists to explain a component. If it is also the thing hiding
-       the component, it has defeated itself. */
-    const user = userEvent.setup()
-    mount()
-    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
-    await user.click(screen.getByRole("button", { name: /show the state diagram/i }))
-
-    const diagram = await screen.findByRole("dialog", { name: "Scenario diagram" })
-    expect(diagram.getAttribute("aria-modal")).toBe(null)
-    expect(document.querySelector(".pm-dg-backdrop")).toBe(null)
-    /* Docked to an edge, so it occupies a strip and not the viewport. */
-    expect(diagram.className).toContain("pm-dg-right")
-  })
-
-  it("keeps the panel open while the diagram is up", async () => {
-    /* A click on a node in the overlay is not a click "outside the panel" in
-       any sense the reviewer means. */
-    const user = userEvent.setup()
-    mount()
-    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
-    await user.click(screen.getByRole("button", { name: /show the state diagram/i }))
-    await user.click(await screen.findByRole("button", { name: /close scenario diagram/i }))
-
-    expect(screen.getByRole("dialog", { name: "Prototype controls" })).toBeTruthy()
-  })
-
   it("closes on Escape", async () => {
     const user = userEvent.setup()
     mount()

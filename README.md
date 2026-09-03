@@ -104,37 +104,6 @@ the panel draws it disabled — visible, but not reachable.
 screenshot or part of the critique. Drag it by the launcher or the header; drop it near
 a corner and it snaps.
 
-**A state diagram.** One figure per machine, drawn from the config, current state
-highlighted and illegal moves dead. Clicking a node is the same as `go()`. It docks to an
-edge instead of covering the app.
-
-```
-+ - - - - - - -  [ ACCOUNT ]  - - - - - - - -+
-|                                            |
-|   ┌          ┐                             |
-|     New user                               |
-|   └          ┘                             |
-|                                            |
-|         ╎                                  |
-|         └ ┐                                |
-|           ▼                                |
-|   ┌               ┐                        |
-|     First project                          |
-|   └               ┘                        |
-|    ↩ New user                              |
-|           ╎                                |
-|       ┌ - ┘                                |
-|       ▼                                    |
-|   ┌      ┐                                 |
-|     Team                                   |
-|   └      ┘                                 |
-|    ↩ New user                              |
-|                                            |
-+ - - - - - - - - - - - - - - - - - - - - - -+
-
-currently New user. legal from here: First project.
-```
-
 **Shareable links.** `p.link()` returns a URL that reproduces what's on screen. A
 scenario resolves in four layers, each beating the one before:
 
@@ -151,46 +120,46 @@ The repo ships an agent skill — [`SKILL.md`](SKILL.md) and [`reference/`](refe
 that teaches a coding agent to model a scenario space and wire the panel. With it
 installed, these are the kinds of things to ask for.
 
-**Setting up**
+**Add prototype-machine to an existing prototype**
 
-> Add prototype-machine to this prototype and mount the panel at the root.
+> I have a projects dashboard that fetches from a mock API. Add prototype-machine so I
+> can drive it through loading, empty, error and populated without touching the fetch.
+> Model the data state as one machine with no transitions, mount the provider and the
+> panel at the root, and read the state at the top of the dashboard component.
 
-> Model the screens in `src/routes/onboarding/` as a machine so I can step through them
-> from the panel.
+**Build something new with the states declared up front**
 
-**Showing a state you can't click to**
+> Create an onboarding flow with three steps: connect an account, create the first
+> project, invite the team. Model it as a machine with transitions — forward one step at
+> a time, back to the start from anywhere — where each state assigns `projectCount` and
+> `hasTeam`. Add a "Restart" action that resets the scenario and navigates to step one.
 
-> Add a control that flips the dashboard between loading, empty, error and populated,
-> without touching the fetch.
+**Switch who's looking**
 
-> I need to demo the trial-expired screen. Make it a state I can jump to.
+> Add a role machine to this settings page with admin, member and viewer states, plus a
+> boolean field for "trial expired". Hide the billing section for anyone but admin and
+> show the paywall banner when the trial has expired. Mirror the role onto `<html>` as
+> `data-role` so the CSS can react to it too.
 
-**Switching who's looking**
+**Replace a hand-rolled panel**
 
-> Add a role switcher — admin, member, viewer — and hide the billing section for anyone
-> but admin.
+> The toggles in my DevControls component let me set "has billing" without "has org",
+> which the product can't do. Move them into prototype-machine as a single account
+> machine whose states assign both values, so that combination stops being clickable,
+> then delete DevControls.
 
-> Add a first-run vs returning-user switch for the home screen.
+**Tune values and share the exact state**
 
-**Ruling out impossible states**
-
-> The toggles in `DevControls.tsx` let me set "has billing" without "has org". Move them
-> to prototype-machine so that can't happen.
-
-> Trial expired should only be reachable from active, never from new user. Fix the
-> transitions.
-
-**Sharing and screenshots**
-
-> Give me a link to the exact state on screen so I can paste it into Slack.
-
-> Add a control for the unread count so I can screenshot it at 0, 1 and 99+.
+> Add a number field for the inbox's unread count (0 to 999, as a slider) and a boolean
+> for dark mode. Then add a "Copy link" action that calls `link()` and puts the URL on
+> the clipboard, so I can screenshot 0, 1 and 99+ and paste the exact scenario into
+> Slack.
 
 ## Documentation
 
 | Doc | What it covers |
 | --- | --- |
-| [reference/api.md](reference/api.md) | Every option and type — `defineMachine`, fields, provider, panel, diagram, `useScenario`, the core entry, errors. |
+| [reference/api.md](reference/api.md) | Every option and type — `defineMachine`, fields, provider, panel, `useScenario`, the core entry, errors. |
 | [reference/recipes.md](reference/recipes.md) | How to model something — journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS. |
 | [SKILL.md](SKILL.md) | The agent skill itself. |
 

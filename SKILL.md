@@ -8,8 +8,7 @@ description: >-
   landed," "send someone a link to this exact scenario," or when a prototype has grown a
   hand-rolled panel of toggles that can be driven into states the product cannot reach.
   Covers modelling journeys vs free axes, transitions and guards, URL and storage
-  precedence, and the ASCII state diagram. Triggers on: prototype
-  controls, scenario switcher, state switcher, persona switcher, role switcher, dev
+  precedence. Triggers on: prototype controls, scenario switcher, state switcher, persona switcher, role switcher, dev
   panel, debug panel, empty state, loading state, error state, forced state, first-run,
   onboarding state, feature flag panel, prototype-machine, defineMachine, ScenarioPanel,
   useScenario. NOT for production feature flags or real application state — this is
@@ -152,18 +151,16 @@ not tell anyone to press one.
    the prototype is holding the old shape, and it will render it under the new reading.
 6. **Dev-only, and prove it at the bundler.** `enabled` stops it rendering; a production
    alias stops it shipping.
-7. **Label every state in the reviewer's language.** `note` is what the tooltip and the
-   diagram quote. "2 of 3, waiting pill live" is worth more than `keyMade`.
+7. **Label every state in the reviewer's language.** `note` is what the tooltip
+   shows. "2 of 3, waiting pill live" is worth more than `keyMade`.
 8. **The panel has to be movable, because it covers the thing being reviewed.** It drags
    from its launcher or its header, snaps to a corner when released near one, and
    remembers where it was put. Do not reintroduce a fixed corner as the only option.
-   For the same reason the diagram DOCKS beside the app rather than over it, and draws no
-   backdrop — a figure explaining a component must not be the thing hiding it.
 9. **If it is not a state of the component, it is a field.** A theme switch, a density
    toggle, a locale — these vary freely, write no tuple and mean nothing to the machines.
-   Modelling one as a machine puts it in the state diagram beside the real states, which
-   is how a reviewer ends up reading "light / dark" as part of a journey. Fields are kept
-   out of the diagram deliberately; use one.
-10. **`transitions` is what makes the diagram worth opening.** A machine without them
-    draws as a flat row, which is correct and also uninformative. If the thing you are
-    modelling really is a journey, declaring the map is what makes its shape visible.
+   Modelling one as a machine puts it in a row beside the real journeys, which is how a
+   reviewer ends up reading "light / dark" as a step in one. Use a field.
+10. **`transitions` is what gives a journey its shape.** A machine without them renders
+    as a row of pills that are all enabled, which is right for a view control and wrong
+    for a journey. If the thing you are modelling really is a journey, declaring the map
+    is what makes the illegal moves visible as disabled pills.

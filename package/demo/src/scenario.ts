@@ -88,9 +88,9 @@ export const scenario = defineMachine({
       },
     },
     /* DELIBERATELY AWKWARD, and only on one route. Nine states, long labels
-       and a dense transition map — the case that shows where the diagram's
-       edge routing gives up and falls back to listing moves as text. Kept out
-       of the way because it is a test fixture, not a model worth copying. */
+       and a dense transition map — a stress case for how the panel lays out a
+       big row of pills with most of them disabled. Kept out of the way because
+       it is a test fixture, not a model worth copying. */
     review: {
       label: "Review pipeline",
       initial: "drafting",
