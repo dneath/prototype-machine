@@ -25,4 +25,3 @@ export {
   toSearch,
   writeStorage,
 } from "./serialize"
-export { layout, type Cell, type CellKind, type Figure } from "./diagram"

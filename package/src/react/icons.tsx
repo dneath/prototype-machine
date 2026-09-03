@@ -35,16 +35,6 @@ export const NodesIcon = ({ size }: { size?: number }) => (
   </Svg>
 )
 
-/* A figure, framed. Matches the diagram's own visual language. */
-export const DiagramIcon = ({ size }: { size?: number }) => (
-  <Svg size={size}>
-    <path d="M3 4h4M17 4h4M3 20h4M17 20h4M3 4v3M21 4v3M3 20v-3M21 20v-3" />
-    <rect x="8.5" y="7" width="7" height="4" rx="1" />
-    <rect x="8.5" y="13" width="7" height="4" rx="1" />
-    <path d="M12 11v2" />
-  </Svg>
-)
-
 export const CloseIcon = ({ size }: { size?: number }) => (
   <Svg size={size}>
     <path d="M18 6 6 18M6 6l12 12" />

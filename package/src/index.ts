@@ -14,7 +14,6 @@ export {
 } from "./react/provider"
 export { useScenario, useScenarioValue } from "./react/use-scenario"
 export { ScenarioPanel, type PanelPosition, type ScenarioPanelProps } from "./react/panel"
-export { ScenarioDiagram, type ScenarioDiagramProps } from "./react/diagram"
 export {
   useDrag,
   clampToViewport,
@@ -28,15 +27,6 @@ export {
   type UseDragOptions,
   type UseDragResult,
 } from "./react/drag"
-export {
-  useDock,
-  edgeTarget,
-  clampWidth,
-  type DockMode,
-  type DockState,
-  type UseDockOptions,
-  type UseDockResult,
-} from "./react/dock"
 export { FieldRow, MachineRow, Pill, Row } from "./react/controls"
 export { injectStyles, styles } from "./react/styles"
 

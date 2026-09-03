@@ -45,8 +45,6 @@ export interface ScenarioApi {
 
   open: boolean
   setOpen(open: boolean): void
-  diagramOpen: boolean
-  setDiagramOpen(open: boolean): void
 }
 
 /** Context and the API in one object, so `p.step` and `p.set` read alike. */
@@ -111,7 +109,6 @@ export function ScenarioProvider({
 
   const [edits, setEdits] = React.useState<PartialSnapshot>({})
   const [open, setOpen] = React.useState(false)
-  const [diagramOpen, setDiagramOpen] = React.useState(false)
 
   /* Server and first client render both produce the config's defaults, so the
      markup matches and nothing has to be suppressed. Storage and the URL are
@@ -248,12 +245,10 @@ export function ScenarioProvider({
       enabled: enabled ?? isDev,
       open,
       setOpen,
-      diagramOpen,
-      setDiagramOpen,
     }
   }, [
     context, m, snapshot, edits, storageKey,
-    env, navigate, path, hydrated, enabled, open, diagramOpen,
+    env, navigate, path, hydrated, enabled, open,
   ])
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>

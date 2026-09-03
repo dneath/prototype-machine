@@ -41,13 +41,10 @@ const CSS = `
 }
 .pm-root *, .pm-root *::before, .pm-root *::after { box-sizing: border-box; }
 
-/* The corner anchors read the diagram's published inset, so opening a docked
-   diagram slides the panel clear of it instead of hiding it behind the thing it
-   was opened from. Zero when no diagram is docked, so this costs nothing. */
-.pm-bottom-right { right: calc(16px + var(--pm-diagram-inset-right, 0px)); bottom: 16px; }
-.pm-bottom-left  { left:  calc(16px + var(--pm-diagram-inset-left,  0px)); bottom: 16px; }
-.pm-top-right    { right: calc(16px + var(--pm-diagram-inset-right, 0px)); top: 16px; }
-.pm-top-left     { left:  calc(16px + var(--pm-diagram-inset-left,  0px)); top: 16px; }
+.pm-bottom-right { right: 16px; bottom: 16px; }
+.pm-bottom-left  { left: 16px; bottom: 16px; }
+.pm-top-right    { right: 16px; top: 16px; }
+.pm-top-left     { left: 16px; top: 16px; }
 
 .pm-launcher {
   display: grid;
@@ -213,156 +210,6 @@ const CSS = `
 .pm-action:hover { border-color: var(--pm-line-strong); color: var(--pm-fg); }
 .pm-action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .pm-actions { display: grid; gap: 6px; margin-top: 4px; }
-
-/* The diagram does not share the panel's tokens. It is a technical figure —
-   near-black ground, monospace, dashed frames, one accent — and it should read
-   as something you would paste into a review rather than as part of the tool. */
-.pm-dg {
-  --pm-dg-bg: #0d0d0d;
-  --pm-dg-frame: rgba(255, 255, 255, 0.16);
-  --pm-dg-text: #b4b0a8;
-  /* The colour itself. 3:1 on the ground above — enough for a border or a
-     focus ring, which is all it paints. */
-  --pm-dg-accent: #7410ff;
-  /* The same hue lightened to 5.4:1, for the 13px monospace that has to be
-     READ: the current state, the bracketed title, a hovered node. */
-  --pm-dg-accent-text: #a564ff;
-  --pm-dg-dead: rgba(255, 255, 255, 0.22);
-  position: fixed;
-  display: flex;
-  flex-direction: column;
-  background: var(--pm-dg-bg);
-  color: var(--pm-dg-text);
-  /* No backdrop anywhere: the app behind stays visible AND clickable, which is
-     the entire point of docking rather than overlaying. */
-  box-shadow: 0 0 40px -8px rgba(0, 0, 0, 0.85);
-}
-.pm-dg-left  { border-right: 1px solid var(--pm-dg-frame); }
-.pm-dg-right { border-left: 1px solid var(--pm-dg-frame); }
-.pm-dg-free {
-  border: 1px solid var(--pm-dg-frame);
-  border-radius: 10px;
-  overflow: hidden;
-}
-/* While dragging or resizing, do not also fight the pointer for text. */
-.pm-dg-busy { user-select: none; -webkit-user-select: none; }
-
-.pm-dg-resize {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-  cursor: ew-resize;
-  touch-action: none;
-  z-index: 1;
-}
-.pm-dg-right .pm-dg-resize { left: -3px; }
-.pm-dg-left  .pm-dg-resize { right: -3px; }
-.pm-dg-resize:hover, .pm-dg-busy .pm-dg-resize { background: var(--pm-dg-accent); }
-
-.pm-dg-edge-preview {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  pointer-events: none;
-  border: 1px dashed #7410ff;
-  background: rgba(116, 16, 255, 0.08);
-}
-.pm-dg-edge-left  { left: 0; }
-.pm-dg-edge-right { right: 0; }
-/* Same reasoning, and it matters more here: a "monospace grid" rendered in the
-   host's proportional font is not a grid at all — every row is a different
-   width and the figure falls apart. Declared after the .pm-root rule above so
-   it wins on source order at equal specificity. */
-.pm-dg, .pm-dg * {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-}
-.pm-dg-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex: none;
-  padding: 14px 20px;
-  border-bottom: 1px dashed var(--pm-dg-frame);
-  /* The drag handle. touch-action:none or the browser claims the gesture. */
-  cursor: grab;
-  touch-action: none;
-}
-.pm-dg-busy .pm-dg-head { cursor: grabbing; }
-.pm-dg-head-actions { display: flex; align-items: center; gap: 6px; }
-.pm-dg-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 20px;
-}
-.pm-dg-title {
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--pm-dg-dead);
-}
-.pm-dg-close {
-  margin: 0;
-  padding: 2px 8px;
-  border: 1px solid var(--pm-dg-frame);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--pm-dg-text);
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-}
-.pm-dg-close:hover { color: var(--pm-dg-accent-text); border-color: var(--pm-dg-accent); }
-.pm-dg-close:focus-visible { outline: 2px solid var(--pm-dg-accent); outline-offset: 2px; }
-
-.pm-dg-figure { margin-bottom: 28px; display: grid; justify-items: start; }
-.pm-dg-figure:last-child { margin-bottom: 0; }
-.pm-dg-grid {
-  margin: 0;
-  /* Wide figures scroll rather than forcing the page to — which needs the
-     max-width as well as the overflow, or the pre simply grows its parent. */
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.35;
-  white-space: pre;
-  letter-spacing: 0.04em;
-}
-.pm-dg-row { min-height: 1.35em; }
-.pm-dg .pm-dg-frame  { color: var(--pm-dg-frame); }
-.pm-dg .pm-dg-text   { color: var(--pm-dg-text); }
-.pm-dg .pm-dg-dim    { color: rgba(255, 255, 255, 0.34); }
-.pm-dg .pm-dg-accent { color: var(--pm-dg-accent-text); }
-.pm-dg .pm-dg-dead   { color: var(--pm-dg-dead); }
-
-/* Inline and unpadded, so a button occupies exactly its own characters and the
-   monospace grid still lines up. */
-.pm-dg-node {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  letter-spacing: inherit;
-  cursor: pointer;
-}
-.pm-dg-node:disabled { cursor: default; }
-.pm-dg-node:not(:disabled):hover { color: var(--pm-dg-accent-text); text-decoration: underline; }
-.pm-dg-node:focus-visible { outline: 1px solid var(--pm-dg-accent); outline-offset: 1px; }
-
-.pm-dg-caption {
-  margin: 10px 0 0;
-  max-width: 100%;
-  font-size: 11px;
-  color: var(--pm-dg-dead);
-}
-.pm-dg-empty { margin: 0; font-size: 13px; color: var(--pm-dg-text); }
 
 .pm-sr {
   position: absolute;
