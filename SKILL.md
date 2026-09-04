@@ -60,14 +60,14 @@ and to wire the panel that drives it.
 
 ## Setup check
 
-This guidance targets **prototype-machine 0.6.0**.
+This guidance targets **prototype-machine 0.7.0**.
 
 1. Read the project's `package.json` and lockfile before touching anything. Check
    whether `prototype-machine` is already installed and at which version.
 2. **Never add or upgrade a dependency silently.** If the user authorises it, pin the
    version:
    ```bash
-   npm install --save-exact prototype-machine@0.6.0 -D
+   npm install --save-exact prototype-machine@0.7.0 -D
    ```
 3. **Never copy the package's source into the app.** It is an npm dependency, not a
    snippet to paste. If the user wants to modify it, they change the package.

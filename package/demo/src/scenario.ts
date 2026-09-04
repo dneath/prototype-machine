@@ -16,6 +16,7 @@ export const scenario = defineMachine({
        request that arrived on a key which was never issued. */
     journey: {
       label: "Get connected",
+      description: "Each rung writes step, key and first request together.",
       initial: "firstRun",
       states: {
         parked: {
@@ -57,11 +58,14 @@ export const scenario = defineMachine({
        every other — which is right, because these are not journeys. */
     role: {
       label: "Role",
+      group: "Viewing as",
       initial: "user",
       states: { user: { label: "Standard user" }, admin: { label: "Admin" } },
     },
     data: {
       label: "Data state",
+      group: "Viewing as",
+      description: "Forced regardless of what the mock API returns.",
       initial: "real",
       param: "state",
       states: {
@@ -131,12 +135,14 @@ export const scenario = defineMachine({
     density: {
       type: "enum",
       label: "Density",
+      group: "Look",
+      description: "Mirrored onto <html> as data-density.",
       default: "comfortable",
       options: ["comfortable", "compact"],
       /* Mirrored onto <html> so plain CSS can read it. */
       dom: { attribute: "data-density" },
     },
-    seats: { type: "number", label: "Seats", default: 12, min: 0, max: 500 },
+    seats: { type: "number", label: "Seats", group: "Look", default: 12, min: 0, max: 500 },
   },
 
   derive: {
@@ -153,6 +159,7 @@ export const scenario = defineMachine({
       id: "restart",
       label: "Restart scenario",
       title: "Clears the scenario and returns to the front door",
+      description: "Back to sign in, with defaults restored.",
       run: (api) => {
         api.reset()
         api.navigate("/signin")
