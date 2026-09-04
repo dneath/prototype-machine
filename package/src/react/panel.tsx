@@ -2,8 +2,8 @@
 
 import * as React from "react"
 
-import { visible } from "../core/machine"
-import { type ActionApi } from "../core/schema"
+import { type PanelSection, sectionsOf } from "../core/sections"
+import { type ActionApi, type ActionDef } from "../core/schema"
 import { FieldRow, MachineRow } from "./controls"
 import { CloseIcon, NodesIcon } from "./icons"
 import { useDrag } from "./drag"
@@ -171,7 +171,9 @@ export function ScenarioPanel({
     )
   }
 
-  const { machines, fields, actions } = p.machine.config
+  const sections = sectionsOf(p.machine.config, p.env)
+  const ungrouped = sections.find((s) => s.group === null)
+  const grouped = sections.filter((s) => s.group !== null)
   const actionApi: ActionApi = {
     set: p.set,
     go: p.go,
@@ -179,6 +181,37 @@ export function ScenarioPanel({
     navigate: p.navigate,
     get: () => p.machine.contextOf(p.snapshot),
   }
+
+  const rowsOf = (section: PanelSection) => (
+    <>
+      {section.machines.map(([id, def]) => (
+        <MachineRow key={id} id={id} def={def} scenario={p} />
+      ))}
+      {section.fields.map(([id, def]) => (
+        <FieldRow key={id} id={id} def={def} scenario={p} />
+      ))}
+    </>
+  )
+
+  const actionsOf = (actions: ReadonlyArray<ActionDef>) =>
+    actions.length ? (
+      <div className="pm-actions">
+        {actions.map((action) => (
+          <button
+            key={action.id}
+            type="button"
+            className="pm-action"
+            title={action.title}
+            onClick={() => action.run(actionApi)}
+          >
+            {action.label}
+            {action.description ? (
+              <span className="pm-action-description">{action.description}</span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+    ) : null
 
   return (
     <>
@@ -209,33 +242,22 @@ export function ScenarioPanel({
       </div>
 
       <div className="pm-rows">
-        {Object.entries(machines).map(([id, def]) =>
-          visible(def, p.env) ? <MachineRow key={id} id={id} def={def} scenario={p} /> : null
-        )}
+        {/* Ungrouped controls first, flat, exactly as a config with no
+            `group` has always rendered. Then each named section in the order
+            its group was first seen, with the section's own actions after its
+            rows. Ungrouped actions stay at the foot, below `children`. */}
+        {ungrouped ? rowsOf(ungrouped) : null}
 
-        {Object.entries(fields).map(([id, def]) =>
-          visible(def, p.env) ? <FieldRow key={id} id={id} def={def} scenario={p} /> : null
-        )}
+        {grouped.map((section) => (
+          <PanelGroup key={section.group} group={section.group as string}>
+            {rowsOf(section)}
+            {actionsOf(section.actions)}
+          </PanelGroup>
+        ))}
 
         {children}
 
-        {actions.length ? (
-          <div className="pm-actions">
-            {actions.map((action) =>
-              visible(action, p.env) ? (
-                <button
-                  key={action.id}
-                  type="button"
-                  className="pm-action"
-                  title={action.title}
-                  onClick={() => action.run(actionApi)}
-                >
-                  {action.label}
-                </button>
-              ) : null
-            )}
-          </div>
-        ) : null}
+        {ungrouped ? actionsOf(ungrouped.actions) : null}
       </div>
     </div>
     {drag.snapPreview ? (
@@ -246,5 +268,17 @@ export function ScenarioPanel({
       />
     ) : null}
     </>
+  )
+}
+
+function PanelGroup({ group, children }: { group: string; children: React.ReactNode }) {
+  const id = React.useId()
+  return (
+    <section className="pm-section" aria-labelledby={id}>
+      <h3 className="pm-section-title" id={id}>
+        {group}
+      </h3>
+      {children}
+    </section>
   )
 }

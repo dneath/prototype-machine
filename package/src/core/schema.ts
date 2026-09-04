@@ -36,8 +36,18 @@ export interface DomBinding {
 
 interface Common {
   label?: string
-  /** Explains the state to whoever is clicking. Rendered as a tooltip. */
+  /** Explains the state to whoever is clicking. Rendered as a hover tooltip. */
   note?: string
+  /** A visible line rendered under the row's label. Use it for what a
+   *  reviewer must read without hovering; `note` is for the rest. */
+  description?: string
+  /**
+   * Names a section header in the panel. Controls sharing a `group` render
+   * together under that heading. Sections appear in the order their group is
+   * first seen across machines, fields and actions; ungrouped controls render
+   * first, above every section.
+   */
+  group?: string
   /** Keep it in context, URL and storage, but out of the panel. */
   hidden?: boolean
   /** Override the query-string key. Defaults to the id. */
@@ -109,6 +119,12 @@ export interface MachineStateDef {
 
 export interface MachineDef {
   label?: string
+  /** A visible line rendered under the row's label. `note` on a state is
+   *  the hover tooltip; this is read without hovering. */
+  description?: string
+  /** Names a section header in the panel. Sections appear in first-seen
+   *  order; ungrouped controls render first. */
+  group?: string
   /** Which state a fresh visitor starts in. */
   initial: string
   states: Record<string, MachineStateDef>
@@ -140,7 +156,13 @@ export interface ActionApi {
 export interface ActionDef {
   id: string
   label: string
+  /** Hover tooltip on the button. */
   title?: string
+  /** A visible second line inside the button, under the label. */
+  description?: string
+  /** Renders the button inside that section, after the section's rows.
+   *  Ungrouped actions stay at the foot of the panel. */
+  group?: string
   when?: (env: Env) => boolean
   run: (api: ActionApi) => void
 }

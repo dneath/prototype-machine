@@ -142,7 +142,30 @@ const CSS = `
   text-transform: uppercase;
   color: var(--pm-muted);
 }
+.pm-description {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--pm-muted);
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: 0;
+  margin: 2px 0 0;
+}
 .pm-options { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* A named group. The top border and margin are what make a run of rows read
+   as a section rather than as more rows. */
+.pm-section { display: grid; gap: 10px; }
+.pm-section-title {
+  margin: 8px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--pm-line);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
 
 .pm-pill {
   margin: 0;
@@ -208,6 +231,13 @@ const CSS = `
   cursor: pointer;
 }
 .pm-action:hover { border-color: var(--pm-line-strong); color: var(--pm-fg); }
+.pm-action-description {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--pm-muted);
+}
 .pm-action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .pm-actions { display: grid; gap: 6px; margin-top: 4px; }
 

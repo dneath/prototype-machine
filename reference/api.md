@@ -1,6 +1,6 @@
 # API reference
 
-**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.6.0.
+**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.7.0.
 
 For *how to model* a scenario space, read [recipes.md](recipes.md) first. This file is
 the exhaustive surface.
@@ -50,6 +50,8 @@ Context is the union of four things, and no two of them may share a name:
 | `states` | `Record<string, MachineStateDef>` | yes | See below. |
 | `transitions` | `Record<string, string[]>` | no | Legal moves, `from -> to[]`. |
 | `label` | `string` | no | Row heading. Defaults to the id. |
+| `description` | `string` | no | A visible line under the row heading. |
+| `group` | `string` | no | Section the row renders under. See [Grouping and descriptions](#grouping-and-descriptions). |
 | `param` | `string` | no | Query-string key. Defaults to the id. |
 | `when` | `(env: Env) => boolean` | no | Render the row only when this passes. |
 | `hidden` | `boolean` | no | In context, URL and storage; out of the panel. |
@@ -76,8 +78,17 @@ because the initial state of a one-way journey is legitimately unreachable.
 
 ## Fields
 
-Every field takes `label`, `note`, `hidden`, `param`, `when`, and a **required**
-`default`.
+Every field takes the common keys below and a **required** `default`.
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `label` | `string` | Row heading. Defaults to the id. |
+| `note` | `string` | Hover tooltip. |
+| `description` | `string` | A visible line under the row heading. |
+| `group` | `string` | Section the row renders under. See [Grouping and descriptions](#grouping-and-descriptions). |
+| `hidden` | `boolean` | In context, URL and storage; out of the panel. |
+| `param` | `string` | Query-string key. Defaults to the id. |
+| `when` | `(env: Env) => boolean` | Render the row only when this passes. |
 
 | `type` | Value | Control | Extra keys |
 | --- | --- | --- | --- |
@@ -93,6 +104,8 @@ Every field takes `label`, `note`, `hidden`, `param`, `when`, and a **required**
 `dom: { attribute, target? }` mirrors the value onto `<html>` (or `"body"`) as an
 attribute, so plain CSS can read it. Removed on unmount.
 
+A boolean reads `1`, `0`, `true`, `false`, `on` or `off` from a URL, and writes `1` or `0`.
+
 A field value that fails validation — wrong type, an enum option that no longer exists,
 a number outside `min`/`max` — is dropped from storage and URLs rather than reaching
 context. Storage outlives configs.
@@ -100,11 +113,15 @@ context. Storage outlives configs.
 ## Actions
 
 ```ts
-actions: [{ id, label, title?, when?, run: (api) => void }]
+actions: [{ id, label, title?, description?, group?, when?, run: (api) => void }]
 ```
 
 `api` is `{ set, go, reset, navigate, get }`. `navigate` is a no-op (with a dev warning)
 unless the provider was given a `navigate` prop.
+
+`title` is the hover tooltip. `description` is a visible second line inside the button.
+`group` moves the button into that section, after the section's rows; without it the
+button sits at the foot of the panel.
 
 ## ScenarioProvider
 
@@ -149,6 +166,37 @@ host can push its own corner UI clear: `{ name: "--toast-inset-bottom", value: "
 
 `zIndex` defaults to 690 — above an app's overlays, below anything that must never be
 covered, like a mandated classification banner.
+
+### Grouping and descriptions
+
+Any machine, field or action can carry `group` and `description`. Both are optional and
+a config without them renders exactly as before.
+
+`description` is a visible line under the row's label (for an action, a second line
+inside the button). `note` stays a hover tooltip. Use `description` for what a reviewer
+must read without hovering.
+
+`group` names a section. Controls sharing a group render together under a heading with
+that text. The rules:
+
+- Ungrouped controls render first, above every section, in declaration order.
+- Sections follow in the order their group is first seen, walking machines, then fields,
+  then actions.
+- Inside a section the order is machines, then fields, then that section's actions.
+- Ungrouped actions stay at the foot of the panel, after `children`.
+- A section with nothing visible in it is not rendered.
+
+```ts
+fields: {
+  unread: { type: "number", label: "Unread", default: 0, group: "Inbox",
+            description: "What the badge shows." },
+  dark:   { type: "boolean", label: "Dark mode", default: false, group: "Look" },
+}
+```
+
+The same split is available without React as `sectionsOf(machine.config, env)` from the
+core entry. It returns `PanelSection[]`, each `{ group, machines, fields, actions }`,
+with `group: null` for the ungrouped section.
 
 ### Dragging and snapping
 
@@ -214,8 +262,8 @@ import { defineMachine, toSearch, fromSearch, resolve } from "prototype-machine/
 
 No React import anywhere in it. Use it in tests, scripts, or a non-React adapter:
 `compile`, `defineMachine`, `isDev`, `isValidFieldValue`, `optionsOf`, `ScenarioError`,
-`visible`, `warn`, `clearStorage`, `fromSearch`, `readStorage`, `resolve`, `toLink`,
-`toSearch`, `writeStorage` — plus every type in the schema. The React entry additionally
+`sectionsOf`, `visible`, `warn`, `clearStorage`, `fromSearch`, `readStorage`, `resolve`,
+`toLink`, `toSearch`, `writeStorage` — plus every type in the schema. The React entry additionally
 exports the snapping primitives — `snapTarget`, `cornerPosition`, `clampToViewport`,
 `useDrag` — which are pure and testable without a DOM.
 

@@ -172,6 +172,48 @@ describe("config validation", () => {
   })
 })
 
+describe("groups and descriptions", () => {
+  it("accepts group and description on a machine, a field and an action", () => {
+    const m = defineMachine({
+      machines: {
+        account: {
+          label: "Account",
+          group: "Who",
+          description: "Drives the whole sign-up tuple.",
+          initial: "fresh",
+          states: { fresh: {}, seasoned: {} },
+        },
+      },
+      fields: {
+        dark: {
+          type: "boolean",
+          default: false,
+          group: "Look",
+          description: "Mirrors onto <html>.",
+        },
+      },
+      actions: [
+        {
+          id: "restart",
+          label: "Restart",
+          group: "Who",
+          description: "Back to the front door.",
+          run: (api) => api.reset(),
+        },
+      ],
+    })
+    /* The point is the compile, not the values: a config carrying the new
+       keys must neither throw nor fail to typecheck. */
+    expect(m.config.machines.account.group).toBe("Who")
+    expect(m.config.machines.account.description).toBe("Drives the whole sign-up tuple.")
+    expect(m.config.fields.dark.group).toBe("Look")
+    expect(m.config.fields.dark.description).toBe("Mirrors onto <html>.")
+    expect(m.config.actions[0].group).toBe("Who")
+    expect(m.config.actions[0].description).toBe("Back to the front door.")
+    expect(m.contextOf(m.initial())).toEqual({ account: "fresh", dark: false })
+  })
+})
+
 describe("context", () => {
   it("exposes machine cursors, assigns, fields and derived values together", () => {
     const ctx = aim.contextOf({

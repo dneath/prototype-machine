@@ -16,6 +16,7 @@ export {
   type PartialSnapshot,
   type Snapshot,
 } from "./machine"
+export { sectionsOf, type PanelSection } from "./sections"
 export {
   clearStorage,
   fromSearch,

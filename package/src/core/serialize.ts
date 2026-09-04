@@ -27,8 +27,8 @@ function decodeField(
 ): Primitive | undefined {
   switch (def.type) {
     case "boolean":
-      if (raw === TRUE || raw === "true") return true
-      if (raw === FALSE || raw === "false") return false
+      if (raw === TRUE || raw === "true" || raw === "on") return true
+      if (raw === FALSE || raw === "false" || raw === "off") return false
       return undefined
     case "number": {
       const n = Number(raw)

@@ -34,6 +34,13 @@ describe("reading a query string", () => {
   it("ignores an unparseable field value", () => {
     expect(fromSearch(aim, "?hasEvents=maybe")).toEqual({})
   })
+
+  it("accepts on and off for a boolean, alongside 1/0 and true/false", () => {
+    expect(fromSearch(aim, "?hasEvents=on")).toEqual({ fields: { hasEvents: true } })
+    expect(fromSearch(aim, "?hasEvents=off")).toEqual({ fields: { hasEvents: false } })
+    expect(fromSearch(aim, "?hasEvents=true")).toEqual({ fields: { hasEvents: true } })
+    expect(fromSearch(aim, "?hasEvents=0")).toEqual({ fields: { hasEvents: false } })
+  })
 })
 
 describe("writing a query string", () => {
