@@ -98,6 +98,21 @@ the panel draws it disabled — visible, but not reachable.
 - **Actions** are buttons at the foot of the panel, for what a control can't say.
 - **`when`** hides a control on screens where it would be meaningless.
 
+## Groups and descriptions
+
+Any control can carry `group` and `description`. Controls sharing a group render under
+one heading, in the order the group is first seen; ungrouped controls stay at the top. A
+description is a visible line under the label, where `note` is only a tooltip.
+
+```ts
+fields: {
+  unread: { type: "number", label: "Unread", default: 0, group: "Inbox",
+            description: "What the badge shows." },
+  dark:   { type: "boolean", label: "Dark mode", default: false, group: "Look" },
+  role:   { type: "enum", label: "Role", default: "member", options: ["member", "admin"] },
+}
+```
+
 ## What you get
 
 **A panel.** Dark, plain and deliberately unlike your app, so it never becomes part of a

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { defineMachine } from "../core/machine"
 import { aim } from "../core/machine.test"
 import { ScenarioPanel } from "./panel"
 import { ScenarioProvider } from "./provider"
@@ -123,5 +124,115 @@ describe("the panel", () => {
     expect(screen.getByTestId("keyIssued").textContent).toBe("false")
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('written by the "journey" machine'))
     warn.mockRestore()
+  })
+})
+
+/* A config that uses every new key: two groups, a description on each kind of
+   control, and one action grouped while another stays loose. */
+const grouped = defineMachine({
+  machines: {
+    account: {
+      label: "Account",
+      group: "Who",
+      description: "New, first project, or a whole team.",
+      initial: "fresh",
+      states: { fresh: { label: "Fresh" }, team: { label: "Team" } },
+    },
+    theme: {
+      label: "Theme",
+      initial: "light",
+      states: { light: { label: "Light" }, dark: { label: "Dark" } },
+    },
+  },
+  fields: {
+    unread: {
+      type: "number",
+      label: "Unread",
+      default: 0,
+      group: "Inbox",
+      description: "How many the badge shows.",
+    },
+    trial: { type: "boolean", label: "Trial expired", default: false, group: "Who" },
+  },
+  actions: [
+    {
+      id: "restart",
+      label: "Restart",
+      group: "Who",
+      description: "Resets and returns to sign in.",
+      run: (api) => api.reset(),
+    },
+    { id: "copy", label: "Copy link", run: () => {} },
+  ],
+})
+
+async function openGrouped() {
+  const user = userEvent.setup()
+  render(
+    <ScenarioProvider machine={grouped} storageKey="panel-group-test-v1" enabled>
+      <ScenarioPanel />
+    </ScenarioProvider>
+  )
+  await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
+  return screen.getByRole("dialog")
+}
+
+describe("groups and descriptions", () => {
+  it("renders group headings, in first-seen order", async () => {
+    await openGrouped()
+    const headings = screen.getAllByRole("heading")
+    expect(headings.map((h) => h.textContent)).toEqual(["Who", "Inbox"])
+    expect(headings.every((h) => h.classList.contains("pm-section-title"))).toBe(true)
+  })
+
+  it("puts the row for each grouped control inside its section, and ungrouped rows before any section", async () => {
+    const dialog = await openGrouped()
+    const who = screen.getByRole("region", { name: "Who" })
+    const inbox = screen.getByRole("region", { name: "Inbox" })
+    expect(who.contains(screen.getByRole("group", { name: "Account" }))).toBe(true)
+    expect(who.contains(screen.getByRole("group", { name: "Trial expired" }))).toBe(true)
+    expect(inbox.contains(screen.getByRole("group", { name: "Unread" }))).toBe(true)
+
+    const theme = screen.getByRole("group", { name: "Theme" })
+    expect(who.contains(theme)).toBe(false)
+    /* Ungrouped rows come first in document order. */
+    expect(theme.compareDocumentPosition(who) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(dialog.querySelectorAll(".pm-section")).toHaveLength(2)
+  })
+
+  it("shows a description as visible text, not only as a title", async () => {
+    await openGrouped()
+    const text = screen.getByText("New, first project, or a whole team.")
+    expect(text.tagName).toBe("P")
+    expect(text.classList.contains("pm-description")).toBe(true)
+    const group = screen.getByRole("group", { name: "Account" })
+    expect(group.getAttribute("aria-describedby")).toBe(text.id)
+    expect(screen.getByText("How many the badge shows.").classList.contains("pm-description")).toBe(true)
+  })
+
+  it("renders a grouped action inside its section and an ungrouped one in the foot", async () => {
+    const dialog = await openGrouped()
+    const who = screen.getByRole("region", { name: "Who" })
+    const restart = screen.getByRole("button", { name: /restart/i })
+    const copy = screen.getByRole("button", { name: "Copy link" })
+    expect(who.contains(restart)).toBe(true)
+    expect(who.contains(copy)).toBe(false)
+    expect(dialog.querySelectorAll(".pm-section").length).toBeGreaterThan(0)
+    /* The foot is the last `.pm-actions` in the panel, outside every section. */
+    const foot = copy.closest(".pm-actions")
+    expect(foot?.closest(".pm-section")).toBe(null)
+    expect(restart.querySelector(".pm-action-description")?.textContent).toBe(
+      "Resets and returns to sign in."
+    )
+  })
+
+  it("renders no headings and no sections for a config without groups", async () => {
+    const user = userEvent.setup()
+    mount()
+    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
+    const dialog = screen.getByRole("dialog")
+    expect(screen.queryAllByRole("heading")).toEqual([])
+    expect(dialog.querySelectorAll(".pm-section")).toHaveLength(0)
+    expect(dialog.querySelectorAll(".pm-description")).toHaveLength(0)
   })
 })
