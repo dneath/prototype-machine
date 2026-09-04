@@ -8,18 +8,32 @@ import { type Scenario } from "./provider"
 
 export function Row({
   label,
+  description,
   children,
 }: {
   label: string
+  /** A visible line under the label, and the group's accessible description. */
+  description?: string
   children: React.ReactNode
 }) {
   const id = React.useId()
+  const descId = `${id}-description`
   return (
     <div className="pm-row">
       <span className="pm-label" id={id}>
         {label}
       </span>
-      <div className="pm-options" role="group" aria-labelledby={id}>
+      {description ? (
+        <p className="pm-description" id={descId}>
+          {description}
+        </p>
+      ) : null}
+      <div
+        className="pm-options"
+        role="group"
+        aria-labelledby={id}
+        aria-describedby={description ? descId : undefined}
+      >
         {children}
       </div>
     </div>
@@ -107,7 +121,11 @@ export function MachineRow({
       })
     )
 
-  return <Row label={def.label ?? id}>{body}</Row>
+  return (
+    <Row label={def.label ?? id} description={def.description}>
+      {body}
+    </Row>
+  )
 }
 
 /** A free field, in whichever control its type and size call for. */
@@ -121,12 +139,13 @@ export function FieldRow({
   scenario: Scenario
 }) {
   const label = def.label ?? id
+  const description = def.description
   const value = scenario.snapshot.fields[id] ?? def.default
 
   switch (def.type) {
     case "boolean":
       return (
-        <Row label={label}>
+        <Row label={label} description={description}>
           <Pill active={value === true} onClick={() => scenario.set({ [id]: true })}>
             {def.trueLabel ?? "On"}
           </Pill>
@@ -140,7 +159,7 @@ export function FieldRow({
       const options = optionsOf(def)
       if (def.control === "select" || (def.control !== "pills" && options.length > SELECT_THRESHOLD)) {
         return (
-          <Row label={label}>
+          <Row label={label} description={description}>
             <select
               className="pm-select"
               value={String(value)}
@@ -157,7 +176,7 @@ export function FieldRow({
         )
       }
       return (
-        <Row label={label}>
+        <Row label={label} description={description}>
           {options.map((o) => (
             <Pill
               key={o.value}
@@ -176,7 +195,7 @@ export function FieldRow({
       const n = typeof value === "number" ? value : def.default
       if (def.control === "range") {
         return (
-          <Row label={label}>
+          <Row label={label} description={description}>
             <div className="pm-number-row">
               <input
                 className="pm-range"
@@ -194,7 +213,7 @@ export function FieldRow({
         )
       }
       return (
-        <Row label={label}>
+        <Row label={label} description={description}>
           <input
             className="pm-number"
             type="number"
@@ -214,7 +233,7 @@ export function FieldRow({
 
     case "string":
       return (
-        <Row label={label}>
+        <Row label={label} description={description}>
           <input
             className="pm-text"
             type="text"
@@ -228,7 +247,7 @@ export function FieldRow({
 
     case "date":
       return (
-        <Row label={label}>
+        <Row label={label} description={description}>
           <input
             className="pm-text"
             type="datetime-local"

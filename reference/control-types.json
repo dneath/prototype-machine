@@ -1,6 +1,6 @@
 {
-  "$comment": "Machine-readable catalogue for prototype-machine 0.6.0. Human docs: ./api.md",
-  "version": "0.6.0",
+  "$comment": "Machine-readable catalogue for prototype-machine 0.7.0. Human docs: ./api.md",
+  "version": "0.7.0",
   "kinds": {
     "machine": {
       "description": "A journey. One state is current; each state writes a whole tuple of context via `assign`. Use when moving one value alone would produce a state the product cannot be in.",
@@ -23,6 +23,16 @@
         "label": {
           "type": "string",
           "required": false
+        },
+        "description": {
+          "type": "string",
+          "required": false,
+          "description": "A visible line under the row heading."
+        },
+        "group": {
+          "type": "string",
+          "required": false,
+          "description": "Section the row renders under. Sections appear in first-seen order; ungrouped controls render first."
         },
         "param": {
           "type": "string",
@@ -53,6 +63,14 @@
       "required": false,
       "description": "Tooltip text."
     },
+    "description": {
+      "required": false,
+      "description": "A visible line under the row heading. `note` is the tooltip; this is read without hovering."
+    },
+    "group": {
+      "required": false,
+      "description": "Section the row renders under. Sections appear in the order their group is first seen across machines, fields and actions; ungrouped controls render first."
+    },
     "hidden": {
       "required": false,
       "description": "Kept in context, URL and storage; hidden from the panel."
@@ -76,7 +94,7 @@
         "dom": "{attribute, target?}"
       },
       "example": "hasEvents: { type: 'boolean', label: 'Guardrail events', default: true, trueLabel: 'Some', falseLabel: 'None' }",
-      "urlEncoding": "1 / 0 (also accepts true / false)"
+      "urlEncoding": "1 / 0 (also accepts true / false and on / off)"
     },
     "enum": {
       "value": "literal union of the option values",
@@ -126,11 +144,13 @@
     "note": "`ctx` contains machine cursors, assigned tuples and fields, but not other derived values."
   },
   "actions": {
-    "description": "Buttons at the foot of the panel.",
+    "description": "Buttons at the foot of the panel, or inside a section when given a `group`.",
     "keys": {
       "id": "string",
       "label": "string",
       "title": "string?",
+      "description": "string?  A visible second line inside the button.",
+      "group": "string?  Renders the button inside that section, after its rows. Ungrouped actions stay at the foot.",
       "when": "(env) => boolean",
       "run": "(api) => void"
     },
@@ -172,5 +192,15 @@
     "Escape": "close the panel",
     "arrows": "nudge the panel while its handle has focus; shift for a bigger step",
     "drag near a corner": "snap the panel to it (within 140px)"
+  },
+  "sections": {
+    "description": "Any machine, field or action may carry `group`. Controls sharing a group render under one heading.",
+    "order": [
+      "ungrouped controls first, in declaration order",
+      "then sections in first-seen order across machines, fields, actions",
+      "inside a section: machines, fields, then that section's actions",
+      "ungrouped actions at the foot, after children"
+    ],
+    "coreHelper": "sectionsOf(machine.config, env) => PanelSection[]  ({ group: string | null, machines, fields, actions })"
   }
 }
