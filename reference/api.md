@@ -1,6 +1,6 @@
 # API reference
 
-**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.7.0.
+**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.9.0.
 
 For *how to model* a scenario space, read [recipes.md](recipes.md) first. This file is
 the exhaustive surface.
@@ -30,7 +30,7 @@ const scenario = defineMachine({ machines, fields, derive, actions })
 | `machines` | `Record<string, MachineDef>` | Journeys. Each puts its current state id into context under its own name. |
 | `fields` | `Record<string, AnyField>` | Independent axes. |
 | `derive` | `Record<string, (ctx) => value>` | Computed values. Never stored, never in a URL. `ctx` is fully typed and contains machines, tuples and fields — but not other derived values. |
-| `actions` | `ActionDef[]` | Buttons at the foot of the panel. |
+| `actions` | `ActionDef[]` | Buttons. Ungrouped ones render last. |
 
 Everything is validated at module load. Types are inferred, so `useScenario(scenario)`
 knows the shape of context with no annotation anywhere.
@@ -50,8 +50,7 @@ Context is the union of four things, and no two of them may share a name:
 | `states` | `Record<string, MachineStateDef>` | yes | See below. |
 | `transitions` | `Record<string, string[]>` | no | Legal moves, `from -> to[]`. |
 | `label` | `string` | no | Row heading. Defaults to the id. |
-| `description` | `string` | no | A visible line under the row heading. |
-| `group` | `string` | no | Section the row renders under. See [Grouping and descriptions](#grouping-and-descriptions). |
+| `group` | `string` | no | Section the row renders under. See [Grouping](#grouping). |
 | `param` | `string` | no | Query-string key. Defaults to the id. |
 | `when` | `(env: Env) => boolean` | no | Render the row only when this passes. |
 | `hidden` | `boolean` | no | In context, URL and storage; out of the panel. |
@@ -84,8 +83,7 @@ Every field takes the common keys below and a **required** `default`.
 | --- | --- | --- |
 | `label` | `string` | Row heading. Defaults to the id. |
 | `note` | `string` | Hover tooltip. |
-| `description` | `string` | A visible line under the row heading. |
-| `group` | `string` | Section the row renders under. See [Grouping and descriptions](#grouping-and-descriptions). |
+| `group` | `string` | Section the row renders under. See [Grouping](#grouping). |
 | `hidden` | `boolean` | In context, URL and storage; out of the panel. |
 | `param` | `string` | Query-string key. Defaults to the id. |
 | `when` | `(env: Env) => boolean` | Render the row only when this passes. |
@@ -113,15 +111,14 @@ context. Storage outlives configs.
 ## Actions
 
 ```ts
-actions: [{ id, label, title?, description?, group?, when?, run: (api) => void }]
+actions: [{ id, label, title?, group?, when?, run: (api) => void }]
 ```
 
 `api` is `{ set, go, reset, navigate, get }`. `navigate` is a no-op (with a dev warning)
 unless the provider was given a `navigate` prop.
 
-`title` is the hover tooltip. `description` is a visible second line inside the button.
-`group` moves the button into that section, after the section's rows; without it the
-button sits at the foot of the panel.
+`title` is the hover tooltip. `group` moves the button into that section, after the
+section's rows; without it the button renders last, after the panel's `children`.
 
 ## ScenarioProvider
 
@@ -129,10 +126,12 @@ button sits at the foot of the panel.
 | --- | --- | --- | --- |
 | `machine` | `Machine` | — | **Required.** |
 | `storageKey` | `string` | — | **Required.** Version it when a field changes meaning. |
-| `path` | `string \| null` | `null` | Current route. Feeds `env.path` and the report. |
+| `path` | `string \| null` | `null` | Current route, for `when` predicates. |
 | `navigate` | `(to: string) => void` | — | Router push, for actions. |
 | `env` | `Record<string, unknown>` | — | Merged into what `when` sees. |
 | `enabled` | `boolean` | `NODE_ENV !== "production"` | Whether the controls mount. Context is provided either way. |
+| `syncUrl` | `boolean` | `false` | Keep the address bar in step with the scenario (`replaceState`, other params kept). Off: scenario params are read once, then removed. |
+| `syncTabs` | `boolean` | `false` | Follow scenario changes saved by other tabs on the same `storageKey`. |
 
 Mount it once, above everything that reads a scenario.
 
@@ -146,6 +145,13 @@ Storage is read on the render after hydration, never in an effect: the server an
 first client render both produce the declared defaults, so markup matches and nothing
 needs `suppressHydrationWarning`.
 
+A URL carrying any scenario parameter is authoritative: storage is ignored for that load,
+then overwritten with what the URL said. Storage holds only values that differ from their
+defaults, plus a hash of the config's shape; a saved scenario from a different shape is
+dropped. Writes are batched (~150ms) and flushed on `pagehide`.
+
+In development, two providers sharing a `storageKey` log a warning.
+
 ## ScenarioPanel
 
 | Prop | Type | Default |
@@ -155,10 +161,11 @@ needs `suppressHydrationWarning`.
 | `zIndex` | `number` | `690` |
 | `draggable` | `boolean` | `true` |
 | `inset` | `{ name: string; value: string }` | — |
+| `nonce` | `string` | — |
 | `enabled` | `boolean` | the provider's |
 | `children` | `ReactNode` | — |
 
-`children` renders at the foot of the panel, for anything the config cannot express — a
+`children` renders after the rows, for anything the config cannot express — a
 theme switch bound to the host's own provider, a link to the design file.
 
 `inset` sets a CSS custom property on `<html>` while the controls are mounted, so the
@@ -167,14 +174,21 @@ host can push its own corner UI clear: `{ name: "--toast-inset-bottom", value: "
 `zIndex` defaults to 690 — above an app's overlays, below anything that must never be
 covered, like a mandated classification banner.
 
-### Grouping and descriptions
+`nonce` is set on the injected `<style>` element, for pages with a strict CSP.
 
-Any machine, field or action can carry `group` and `description`. Both are optional and
-a config without them renders exactly as before.
+The panel is non-modal: focus moves to the first control on open, and a click outside
+closes it unless it is pinned (the pin button in the header). Open, pinned and collapsed
+sections persist under `` `${storageKey}:pm-panel-ui` ``. Past eight rows a filter box
+appears. Unreachable states are `aria-disabled` and say why, to screen readers and in a
+tooltip.
 
-`description` is a visible line under the row's label (for an action, a second line
-inside the button). `note` stays a hover tooltip. Use `description` for what a reviewer
-must read without hovering.
+In production (the `production` export condition) `ScenarioPanel` from the main entry
+renders nothing. Import it from `prototype-machine/panel` to show it in a review build.
+
+### Grouping
+
+Any machine, field or action can carry `group`. A section is a title and its controls,
+nothing else: there is no description line. Explanations go in `note` (a tooltip).
 
 `group` names a section. Controls sharing a group render together under a heading with
 that text. The rules:
@@ -183,13 +197,13 @@ that text. The rules:
 - Sections follow in the order their group is first seen, walking machines, then fields,
   then actions.
 - Inside a section the order is machines, then fields, then that section's actions.
-- Ungrouped actions stay at the foot of the panel, after `children`.
+- Ungrouped actions render last, after `children`.
+- Section titles are buttons that collapse the section; collapsed state is remembered.
 - A section with nothing visible in it is not rendered.
 
 ```ts
 fields: {
-  unread: { type: "number", label: "Unread", default: 0, group: "Inbox",
-            description: "What the badge shows." },
+  unread: { type: "number", label: "Unread", default: 0, group: "Inbox" },
   dark:   { type: "boolean", label: "Dark mode", default: false, group: "Look" },
 }
 ```
@@ -239,7 +253,6 @@ Returns context and the API on one object.
 | `can` | `(machine, state) => boolean` | From the current state. |
 | `movesFrom` | `(machine) => string[]` | |
 | `reset` | `() => void` | Defaults, and clears storage. |
-| `link` | `() => string` | Current URL with the scenario applied. |
 | `snapshot` | `{ machines, fields }` | |
 | `machine` | `CompiledMachine` | |
 | `env` | `Env` | |
@@ -249,7 +262,13 @@ Returns context and the API on one object.
 | `open` / `setOpen` | | For your own trigger. |
 | `storageKey` | `string` | The provider's own key, for namespacing beside it. |
 
-`useScenarioValue(machine, key)` reads one value.
+`useScenario(machine)` types `go`, `can`, `movesFrom` and `set` against the config:
+state ids and field values are checked.
+
+`useScenarioValue(machine, key)` reads one value and re-renders only when it changes.
+`useScenarioSelector(machine, ctx => ...)` does the same for any derived slice.
+
+Misspelled ids in `go` and `set` warn with a "did you mean" suggestion.
 
 These names are reserved and a config may not use them for context keys — `compile`
 throws if it tries.
@@ -262,10 +281,15 @@ import { defineMachine, toSearch, fromSearch, resolve } from "prototype-machine/
 
 No React import anywhere in it. Use it in tests, scripts, or a non-React adapter:
 `compile`, `defineMachine`, `isDev`, `isValidFieldValue`, `optionsOf`, `ScenarioError`,
-`sectionsOf`, `visible`, `warn`, `clearStorage`, `fromSearch`, `readStorage`, `resolve`,
-`toLink`, `toSearch`, `writeStorage` — plus every type in the schema. The React entry additionally
+`sectionsOf`, `visible`, `warn`, `has`, `suggest`, `describe`, `clearStorage`,
+`fromSearch`, `readStorage`, `resolve`, `toSearch`, `mergeSearch`, `diffFromDefaults`,
+`shapeOf`, `writeStorage(machine, key, snapshot)` — plus every type in the schema. The React entry additionally
 exports the snapping primitives — `snapTarget`, `cornerPosition`, `clampToViewport`,
 `useDrag` — which are pure and testable without a DOM.
+
+`describe(machine)` prints a text outline of the scenario space (states, legal moves,
+dead ends, fields, actions). `writeStorage` saves only values that differ from their
+defaults, tagged with `shapeOf(machine)`; a stored shape that no longer matches is ignored.
 
 A compiled machine is itself usable without React. `scenario.contextOf(snapshot)` returns
 the flat object a screen would read; `scenario.can(machineId, from, to)` takes an explicit

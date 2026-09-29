@@ -48,3 +48,15 @@ export const SearchIcon = ({ size }: { size?: number }) => (
     <path d="m21 21-4.3-4.3" />
   </Svg>
 )
+
+export const PinIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="M12 17v5M9 10.8V4h6v6.8l3 3.2H6z" />
+  </Svg>
+)
+
+export const ChevronIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="m6 9 6 6 6-6" />
+  </Svg>
+)

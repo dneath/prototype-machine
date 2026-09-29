@@ -42,6 +42,41 @@ export const isDev = (() => {
   }
 })()
 
+/** Own-property lookup. Config ids arrive from URLs and storage, so `constructor` must not match `Object.prototype`. */
+export function has(obj: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key)
+}
+
+function distance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0]
+    row[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const next = row[j]
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1))
+      prev = next
+    }
+  }
+  return row[b.length]
+}
+
+/** ` Did you mean "x"?` for a near-miss id, or an empty string. */
+export function suggest(input: string, known: readonly string[]): string {
+  let best: string | undefined
+  let bestScore = Infinity
+  const lower = input.toLowerCase()
+  for (const candidate of known) {
+    const score = distance(lower, candidate.toLowerCase())
+    if (score < bestScore) {
+      best = candidate
+      bestScore = score
+    }
+  }
+  const limit = Math.max(1, Math.floor(input.length / 3))
+  return best !== undefined && bestScore <= limit ? ` Did you mean "${best}"?` : ""
+}
+
 function warn(message: string) {
   if (isDev && typeof console !== "undefined") {
     console.warn(`[prototype-machine] ${message}`)
@@ -54,7 +89,7 @@ function warn(message: string) {
    `reset` would shadow the function. Cheaper to refuse the name than to make
    every consumer reach through `.context`. */
 export const RESERVED = new Set([
-  "set", "go", "can", "movesFrom", "reset", "link", "snapshot", "machine",
+  "set", "go", "can", "movesFrom", "reset", "snapshot", "machine",
   "storageKey", "env", "navigate", "open", "setOpen",
   "hydrated", "enabled",
 ])
@@ -96,6 +131,15 @@ function paramKeyFor(id: string, def: { param?: string }): string {
   return def.param ?? id
 }
 
+function checkLabel(what: string, def: { label?: string; group?: string }): void {
+  if (def.label !== undefined && def.label.trim() === "") {
+    throw new ScenarioError(`${what} has an empty label.`)
+  }
+  if (def.group !== undefined && def.group.trim() === "") {
+    throw new ScenarioError(`${what} has an empty group name.`)
+  }
+}
+
 export function compile(config: {
   machines?: Record<string, MachineDef>
   fields?: Record<string, AnyField>
@@ -117,7 +161,7 @@ export function compile(config: {
     if (stateIds.length === 0) {
       throw new ScenarioError(`Machine "${machineId}" declares no states.`)
     }
-    if (!def.states[def.initial]) {
+    if (!has(def.states, def.initial)) {
       throw new ScenarioError(
         `Machine "${machineId}" starts in "${def.initial}", which is not one of its states (${stateIds.join(", ")}).`
       )
@@ -125,17 +169,17 @@ export function compile(config: {
 
     for (const [stateId, state] of Object.entries(def.states)) {
       for (const key of Object.keys(state.assign ?? {})) {
-        if (key in machines) {
+        if (has(machines, key)) {
           throw new ScenarioError(
             `"${machineId}.${stateId}" assigns "${key}", but a machine is already called that.`
           )
         }
-        if (key in fields) {
+        if (has(fields, key)) {
           throw new ScenarioError(
             `"${machineId}.${stateId}" assigns "${key}", but that is also a free field. A key is owned by exactly one thing — either the machine writes it as part of a tuple, or it varies on its own.`
           )
         }
-        const owner = ownerOf[key]
+        const owner = has(ownerOf, key) ? ownerOf[key] : undefined
         if (owner && owner !== machineId) {
           throw new ScenarioError(
             `Machines "${owner}" and "${machineId}" both assign "${key}". Two machines writing one key is how illegal tuples get in.`
@@ -145,15 +189,30 @@ export function compile(config: {
       }
     }
 
+    /* Context types every assigned key as always present, so every state has
+       to write the same set; otherwise a read quietly comes back undefined. */
+    const keySets = Object.entries(def.states).map(
+      ([stateId, state]) => [stateId, Object.keys(state.assign ?? {}).sort().join(",")] as const
+    )
+    const [firstId, firstKeys] = keySets[0]!
+    for (const [stateId, keys] of keySets) {
+      if (keys !== firstKeys) {
+        throw new ScenarioError(
+          `"${machineId}.${stateId}" assigns {${keys}} but "${machineId}.${firstId}" assigns {${firstKeys}}. Every state in a machine has to assign the same keys.`
+        )
+      }
+    }
+    checkLabel(`Machine "${machineId}"`, def)
+
     if (def.transitions) {
       for (const [from, tos] of Object.entries(def.transitions)) {
-        if (!def.states[from]) {
+        if (!has(def.states, from)) {
           throw new ScenarioError(
             `Machine "${machineId}" declares transitions from "${from}", which is not one of its states.`
           )
         }
         for (const to of tos) {
-          if (!def.states[to]) {
+          if (!has(def.states, to)) {
             throw new ScenarioError(
               `Machine "${machineId}" allows "${from}" -> "${to}", but "${to}" is not one of its states.`
             )
@@ -177,14 +236,14 @@ export function compile(config: {
     }
 
     const key = paramKeyFor(machineId, def)
-    if (params[key]) {
+    if (has(params, key)) {
       throw new ScenarioError(`Two controls both want the "?${key}" query parameter.`)
     }
     params[key] = { kind: "machine", id: machineId }
   }
 
   for (const [fieldId, def] of Object.entries(fields)) {
-    if (fieldId in machines) {
+    if (has(machines, fieldId)) {
       throw new ScenarioError(`"${fieldId}" is both a machine and a field.`)
     }
     if (def.type === "enum") {
@@ -195,15 +254,34 @@ export function compile(config: {
         )
       }
     }
+    if (def.type === "number") {
+      if (def.min !== undefined && def.max !== undefined && def.min > def.max) {
+        throw new ScenarioError(`Field "${fieldId}" has min ${def.min} above max ${def.max}.`)
+      }
+      if (
+        (def.min !== undefined && def.default < def.min) ||
+        (def.max !== undefined && def.default > def.max)
+      ) {
+        throw new ScenarioError(
+          `Field "${fieldId}" defaults to ${def.default}, outside its own range (${def.min ?? "-∞"} to ${def.max ?? "∞"}).`
+        )
+      }
+      if (def.control === "range" && (def.min === undefined || def.max === undefined)) {
+        throw new ScenarioError(
+          `Field "${fieldId}" is a range slider without both min and max; the browser would silently use 0 to 100.`
+        )
+      }
+    }
+    checkLabel(`Field "${fieldId}"`, def)
     const key = paramKeyFor(fieldId, def)
-    if (params[key]) {
+    if (has(params, key)) {
       throw new ScenarioError(`Two controls both want the "?${key}" query parameter.`)
     }
     params[key] = { kind: "field", id: fieldId }
   }
 
   for (const name of Object.keys(derive)) {
-    if (name in machines || name in fields || name in ownerOf) {
+    if (has(machines, name) || has(fields, name) || has(ownerOf, name)) {
       throw new ScenarioError(
         `Derived value "${name}" shadows something real. Derived values are computed from context and cannot share a name with part of it.`
       )
@@ -229,6 +307,7 @@ export function compile(config: {
       throw new ScenarioError(`Two actions share the id "${action.id}".`)
     }
     seenActions.add(action.id)
+    checkLabel(`Action "${action.id}"`, action)
   }
 
   function initial(): Snapshot {
@@ -240,12 +319,12 @@ export function compile(config: {
   }
 
   function movesFrom(machineId: string, from: string): ReadonlyArray<string> {
+    if (!has(machines, machineId)) return []
     const def = machines[machineId]
-    if (!def) return []
     /* No transition map at all means "this is not a journey" — every state is
        one click away, which is what a data-state or role switch wants. */
     if (!def.transitions) return Object.keys(def.states)
-    return def.transitions[from] ?? []
+    return has(def.transitions, from) ? def.transitions[from] : []
   }
 
   function can(machineId: string, from: string, to: string): boolean {
@@ -260,16 +339,22 @@ export function compile(config: {
        then the cursors, then free fields. None of the three can collide —
        compile() refused the config if they could. */
     for (const [machineId, def] of Object.entries(machines)) {
-      const stateId = snapshot.machines[machineId] ?? def.initial
-      const state = def.states[stateId] ?? def.states[def.initial]
+      const raw = has(snapshot.machines, machineId) ? snapshot.machines[machineId] : def.initial
+      const stateId = has(def.states, raw) ? raw : def.initial
+      const state = def.states[stateId]
       Object.assign(ctx, state.assign ?? {})
       ctx[machineId] = stateId
     }
     for (const [fieldId, def] of Object.entries(fields)) {
-      ctx[fieldId] = fieldId in snapshot.fields ? snapshot.fields[fieldId] : def.default
+      ctx[fieldId] = has(snapshot.fields, fieldId) ? snapshot.fields[fieldId] : def.default
     }
     for (const [name, fn] of Object.entries(derive)) {
-      ctx[name] = (fn as (c: unknown) => unknown)(ctx)
+      try {
+        ctx[name] = (fn as (c: unknown) => unknown)(ctx)
+      } catch (error) {
+        warn(`derive "${name}" threw, so it reads as undefined: ${String(error)}`)
+        ctx[name] = undefined
+      }
     }
     return ctx
   }
@@ -279,14 +364,14 @@ export function compile(config: {
     if (input.machines) {
       const m: Record<string, string> = {}
       for (const [id, stateId] of Object.entries(input.machines)) {
-        if (machines[id]?.states[stateId]) m[id] = stateId
+        if (has(machines, id) && typeof stateId === "string" && has(machines[id].states, stateId)) m[id] = stateId
       }
       if (Object.keys(m).length) out.machines = m
     }
     if (input.fields) {
       const f: Record<string, Primitive> = {}
       for (const [id, value] of Object.entries(input.fields)) {
-        const def = fields[id]
+        const def = has(fields, id) ? fields[id] : undefined
         if (def && isValidFieldValue(def, value)) f[id] = value
       }
       if (Object.keys(f).length) out.fields = f
@@ -334,7 +419,13 @@ export function optionsOf(def: { options: ReadonlyArray<string | { value: string
 /** Does this control apply on the screen we are looking at? */
 export function visible(def: { when?: (env: Env) => boolean; hidden?: boolean }, env: Env): boolean {
   if (def.hidden) return false
-  return def.when ? def.when(env) : true
+  if (!def.when) return true
+  try {
+    return def.when(env)
+  } catch (error) {
+    warn(`a when() threw, so the control stays visible: ${String(error)}`)
+    return true
+  }
 }
 
 /**

@@ -5,7 +5,7 @@ description: >-
   drives it, using the `prototype-machine` npm package. Load this when someone needs to
   "show the empty state," "demo the error state," "switch roles in the prototype,"
   "fake being a new user," "get to the state where the key exists but no request has
-  landed," "send someone a link to this exact scenario," or when a prototype has grown a
+  landed," or when a prototype has grown a
   hand-rolled panel of toggles that can be driven into states the product cannot reach.
   Covers modelling journeys vs free axes, transitions and guards, URL and storage
   precedence. Triggers on: prototype controls, scenario switcher, state switcher, persona switcher, role switcher, dev
@@ -60,14 +60,14 @@ and to wire the panel that drives it.
 
 ## Setup check
 
-This guidance targets **prototype-machine 0.7.0**.
+This guidance targets **prototype-machine 0.9.0**.
 
 1. Read the project's `package.json` and lockfile before touching anything. Check
    whether `prototype-machine` is already installed and at which version.
 2. **Never add or upgrade a dependency silently.** If the user authorises it, pin the
    version:
    ```bash
-   npm install --save-exact prototype-machine@0.7.0 -D
+   npm install --save-exact prototype-machine@0.9.0 -D
    ```
 3. **Never copy the package's source into the app.** It is an npm dependency, not a
    snippet to paste. If the user wants to modify it, they change the package.
@@ -127,10 +127,9 @@ not tell anyone to press one.
    are independent; a ladder if they are not. Recipe 1 and 3.
 4. **"This toggle lets me build a state that can't happen"** → the two switches are one
    machine. Recipe 4, the migration recipe.
-5. **"Send someone this exact state"** → already works; `p.link()`.
-6. **A control that only makes sense on one screen** → `when: (env) => env.path === "/signin"`.
-7. **Config throws at boot** → the message names the problem and the fix. It is meant to.
-8. **Anything about production flags, real auth, or persisted user settings** → wrong
+5. **A control that only makes sense on one screen** → `when: (env) => env.path === "/signin"`.
+6. **Config throws at boot** → the message names the problem and the fix. It is meant to.
+7. **Anything about production flags, real auth, or persisted user settings** → wrong
    tool. Say so.
 
 ## Design principles
@@ -149,18 +148,21 @@ not tell anyone to press one.
    journey), derive it. A fourth independent switch is a fourth way to lie.
 5. **Version the `storageKey` when a field changes meaning.** Every browser that opened
    the prototype is holding the old shape, and it will render it under the new reading.
-6. **Dev-only, and prove it at the bundler.** `enabled` stops it rendering; a production
-   alias stops it shipping.
-7. **Label every state in the reviewer's language.** `note` is what the tooltip
+6. **Dev-only, and prove it at the bundler.** `enabled` stops it rendering; the package's
+   `production` export condition swaps in a stub panel so it never ships. Review builds
+   that need the panel import it from `prototype-machine/panel`.
+7. **A section is a title plus its controls. Never subtext.** No explanatory line under a
+   section or row heading; if a control needs explaining, put it in `note` (the tooltip).
+8. **Label every state in the reviewer's language.** `note` is what the tooltip
    shows. "2 of 3, waiting pill live" is worth more than `keyMade`.
-8. **The panel has to be movable, because it covers the thing being reviewed.** It drags
+9. **The panel has to be movable, because it covers the thing being reviewed.** It drags
    from its launcher or its header, snaps to a corner when released near one, and
    remembers where it was put. Do not reintroduce a fixed corner as the only option.
-9. **If it is not a state of the component, it is a field.** A theme switch, a density
+10. **If it is not a state of the component, it is a field.** A theme switch, a density
    toggle, a locale — these vary freely, write no tuple and mean nothing to the machines.
    Modelling one as a machine puts it in a row beside the real journeys, which is how a
    reviewer ends up reading "light / dark" as a step in one. Use a field.
-10. **`transitions` is what gives a journey its shape.** A machine without them renders
+11. **`transitions` is what gives a journey its shape.** A machine without them renders
     as a row of pills that are all enabled, which is right for a view control and wrong
     for a journey. If the thing you are modelling really is a journey, declaring the map
     is what makes the illegal moves visible as disabled pills.

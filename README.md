@@ -95,23 +95,26 @@ the panel draws it disabled — visible, but not reachable.
   mirror itself onto `<html>` as an attribute, so plain CSS can read it.
 - **Derived values** are computed from context, never stored, so they can't disagree
   with it.
-- **Actions** are buttons at the foot of the panel, for what a control can't say.
+- **Actions** are buttons for what a control can't say. Ungrouped ones render last.
 - **`when`** hides a control on screens where it would be meaningless.
 
-## Groups and descriptions
+## Groups
 
-Any control can carry `group` and `description`. Controls sharing a group render under
-one heading, in the order the group is first seen; ungrouped controls stay at the top. A
-description is a visible line under the label, where `note` is only a tooltip.
+Any control can carry `group`. Controls sharing a group render under one collapsible
+heading, in the order the group is first seen; ungrouped controls stay at the top. A
+section is always a title and its controls — never a line of explanation. Put
+explanations in `note`, which becomes a tooltip.
 
 ```ts
 fields: {
-  unread: { type: "number", label: "Unread", default: 0, group: "Inbox",
-            description: "What the badge shows." },
+  unread: { type: "number", label: "Unread", default: 0, group: "Inbox" },
   dark:   { type: "boolean", label: "Dark mode", default: false, group: "Look" },
   role:   { type: "enum", label: "Role", default: "member", options: ["member", "admin"] },
 }
 ```
+
+Past eight rows the panel grows a filter box. Pin it open to keep it up while you click
+around the prototype.
 
 ## What you get
 
@@ -119,12 +122,16 @@ fields: {
 screenshot or part of the critique. Drag it by the launcher or the header; drop it near
 a corner and it snaps.
 
-**Shareable links.** `p.link()` returns a URL that reproduces what's on screen. A
-scenario resolves in four layers, each beating the one before:
+**Layered state.** A scenario resolves in four layers, each beating the one before:
 
 ```
 config defaults  <  localStorage  <  the URL  <  this session's clicks
 ```
+
+A URL with scenario parameters replaces what storage held rather than mixing with it.
+Only values that differ from their defaults are saved, so changing a default in the
+config reaches every browser. By default the parameters are read once and removed from
+the address bar; `<ScenarioProvider syncUrl>` keeps them in step with the panel instead.
 
 **A React-free core.** `prototype-machine/core` imports no React, so a test or a script
 can build a scenario and assert on it.
@@ -163,12 +170,10 @@ installed, these are the kinds of things to ask for.
 > machine whose states assign both values, so that combination stops being clickable,
 > then delete DevControls.
 
-**Tune values and share the exact state**
+**Tune values**
 
 > Add a number field for the inbox's unread count (0 to 999, as a slider) and a boolean
-> for dark mode. Then add a "Copy link" action that calls `link()` and puts the URL on
-> the clipboard, so I can screenshot 0, 1 and 99+ and paste the exact scenario into
-> Slack.
+> for dark mode, so I can screenshot 0, 1 and 99+.
 
 ## Documentation
 
@@ -180,8 +185,10 @@ installed, these are the kinds of things to ask for.
 
 Two things worth knowing before you ship a review build:
 
-- `enabled` defaults to `process.env.NODE_ENV !== "production"` and fails safe. To keep
-  the bytes out of the bundle too, alias the module to a stub in your production build.
+- `enabled` defaults to `process.env.NODE_ENV !== "production"` and fails safe. Bundlers
+  that honour the `production` export condition (Vite, webpack 5, esbuild, Next) resolve
+  `ScenarioPanel` to a stub that renders nothing, so its bytes never ship. To show the
+  panel in a deployed review build, import it from `prototype-machine/panel`.
 - If you link the package by path, deduplicate `react` and `react-dom` — a `file:`
   dependency resolves through a symlink and can give you two copies of React.
 
