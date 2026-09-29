@@ -1,15 +1,12 @@
-import { type CompiledMachine, type PartialSnapshot, type Snapshot, warn } from "./machine"
+import { type CompiledMachine, has, type PartialSnapshot, type Snapshot, warn } from "./machine"
 import { type Primitive } from "./schema"
 
 /* Where a scenario comes from, in order of who wins:
  *
  *   defaults  <  localStorage  <  URL  <  what you clicked this session
  *
- * The URL beating storage is the load-bearing part. A link is how a scenario
- * travels into a review or a bug report, and if the recipient's browser had
- * been clicking around earlier, a link that lost to their storage would render
- * something neither of you meant and read as a broken product rather than a
- * link that failed to land.
+ * A query string is an explicit instruction ("open in this state"), so it
+ * beats whatever an earlier session left in storage.
  */
 
 const TRUE = "1"
@@ -53,7 +50,7 @@ export function fromSearch(machine: CompiledMachine, search: string): PartialSna
 
     if (target.kind === "machine") {
       const def = machine.config.machines[target.id]
-      if (def.states[raw]) {
+      if (has(def.states, raw)) {
         machines[target.id] = raw
       } else {
         warn(
@@ -78,37 +75,36 @@ export function fromSearch(machine: CompiledMachine, search: string): PartialSna
   })
 }
 
-/** The query string that reproduces this scenario. Hidden controls included:
- *  a link has to carry the whole scenario, not just the visible half. */
+/** The query string that reproduces this scenario. Hidden controls included,
+ *  so it carries the whole scenario, not just the visible half. */
 export function toSearch(machine: CompiledMachine, snapshot: Snapshot): string {
   const params = new URLSearchParams()
   for (const [key, target] of Object.entries(machine.params)) {
     if (target.kind === "machine") {
       const def = machine.config.machines[target.id]
-      const value = snapshot.machines[target.id] ?? def.initial
-      /* Omit anything already at its default. A link that spells out every
+      const value = has(snapshot.machines, target.id) ? snapshot.machines[target.id] : def.initial
+      /* Omit anything already at its default. A query that spells out every
          axis is unreadable and hides which ones actually matter. */
       if (value !== def.initial) params.set(key, value)
       continue
     }
     const def = machine.config.fields[target.id]
-    const value = target.id in snapshot.fields ? snapshot.fields[target.id] : def.default
+    const value = has(snapshot.fields, target.id) ? snapshot.fields[target.id] : def.default
     if (value !== def.default) params.set(key, encodeField(value))
   }
   return params.toString()
 }
 
-/** A full URL for the current scenario on the current page. */
-export function toLink(machine: CompiledMachine, snapshot: Snapshot, href?: string): string {
-  const base =
-    href ?? (typeof window !== "undefined" ? window.location.href : "http://localhost/")
-  try {
-    const url = new URL(base)
-    url.search = toSearch(machine, snapshot)
-    return url.toString()
-  } catch {
-    return `?${toSearch(machine, snapshot)}`
+/** `search` with the scenario's own keys replaced, or removed when `snapshot`
+ *  is null. Every other parameter is left exactly where it was. */
+export function mergeSearch(machine: CompiledMachine, search: string, snapshot: Snapshot | null): string {
+  const params = new URLSearchParams(search)
+  for (const key of Object.keys(machine.params)) params.delete(key)
+  if (snapshot) {
+    for (const [key, value] of new URLSearchParams(toSearch(machine, snapshot))) params.set(key, value)
   }
+  const out = params.toString()
+  return out ? `?${out}` : ""
 }
 
 /* Storage. Every read is defensive: private browsing throws on access, a quota
@@ -116,21 +112,70 @@ export function toLink(machine: CompiledMachine, snapshot: Snapshot, href?: stri
    hold states that no longer exist. None of it is worth an error boundary —
    the defaults are always a correct scenario. */
 
+/** Only what differs from the defaults. A saved default is a pinned default:
+ *  change `initial` in the config and every browser that saved it would keep
+ *  showing the old one. */
+export function diffFromDefaults(machine: CompiledMachine, snapshot: Snapshot): PartialSnapshot {
+  const base = machine.initial()
+  const out: PartialSnapshot = {}
+  const m: Record<string, string> = {}
+  for (const [id, value] of Object.entries(snapshot.machines)) {
+    if (has(base.machines, id) && base.machines[id] !== value) m[id] = value
+  }
+  const f: Record<string, Primitive> = {}
+  for (const [id, value] of Object.entries(snapshot.fields)) {
+    if (has(base.fields, id) && base.fields[id] !== value) f[id] = value
+  }
+  if (Object.keys(m).length) out.machines = m
+  if (Object.keys(f).length) out.fields = f
+  return out
+}
+
+/** A fingerprint of the config's shape: machine states and field types. Labels
+ *  and notes can change freely; a renamed state or retyped field cannot. */
+export function shapeOf(machine: CompiledMachine): string {
+  const parts: string[] = []
+  for (const [id, def] of Object.entries(machine.config.machines)) {
+    parts.push(`m:${id}:${Object.keys(def.states).join(",")}`)
+  }
+  for (const [id, def] of Object.entries(machine.config.fields)) {
+    parts.push(`f:${id}:${def.type}`)
+  }
+  let hash = 5381
+  const text = parts.join("|")
+  for (let i = 0; i < text.length; i++) hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0
+  return (hash >>> 0).toString(36)
+}
+
+interface Stored extends PartialSnapshot {
+  shape?: string
+}
+
 export function readStorage(machine: CompiledMachine, key: string): PartialSnapshot {
   try {
     const raw = window.localStorage.getItem(key)
     if (!raw) return {}
-    const parsed = JSON.parse(raw) as PartialSnapshot
+    const parsed = JSON.parse(raw) as Stored
     if (!parsed || typeof parsed !== "object") return {}
-    return machine.sanitize(parsed)
+    /* A different shape means the config was restructured since this was
+       saved. Guessing which saved values still mean the same thing is how a
+       stale scenario sneaks back in, so start from the defaults. */
+    if (parsed.shape !== undefined && parsed.shape !== shapeOf(machine)) return {}
+    return machine.sanitize({ machines: parsed.machines, fields: parsed.fields })
   } catch {
     return {}
   }
 }
 
-export function writeStorage(key: string, snapshot: Snapshot): void {
+export function writeStorage(machine: CompiledMachine, key: string, snapshot: Snapshot): void {
   try {
-    window.localStorage.setItem(key, JSON.stringify(snapshot))
+    const diff = diffFromDefaults(machine, snapshot)
+    if (!diff.machines && !diff.fields) {
+      window.localStorage.removeItem(key)
+      return
+    }
+    const stored: Stored = { shape: shapeOf(machine), ...diff }
+    window.localStorage.setItem(key, JSON.stringify(stored))
   } catch {
     /* Nothing depends on it persisting. */
   }

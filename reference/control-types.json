@@ -1,6 +1,6 @@
 {
-  "$comment": "Machine-readable catalogue for prototype-machine 0.7.0. Human docs: ./api.md",
-  "version": "0.7.0",
+  "$comment": "Machine-readable catalogue for prototype-machine 0.9.0. Human docs: ./api.md",
+  "version": "0.9.0",
   "kinds": {
     "machine": {
       "description": "A journey. One state is current; each state writes a whole tuple of context via `assign`. Use when moving one value alone would produce a state the product cannot be in.",
@@ -23,11 +23,6 @@
         "label": {
           "type": "string",
           "required": false
-        },
-        "description": {
-          "type": "string",
-          "required": false,
-          "description": "A visible line under the row heading."
         },
         "group": {
           "type": "string",
@@ -62,10 +57,6 @@
     "note": {
       "required": false,
       "description": "Tooltip text."
-    },
-    "description": {
-      "required": false,
-      "description": "A visible line under the row heading. `note` is the tooltip; this is read without hovering."
     },
     "group": {
       "required": false,
@@ -144,13 +135,12 @@
     "note": "`ctx` contains machine cursors, assigned tuples and fields, but not other derived values."
   },
   "actions": {
-    "description": "Buttons at the foot of the panel, or inside a section when given a `group`.",
+    "description": "Buttons after the panel's children, or inside a section when given a `group`.",
     "keys": {
       "id": "string",
       "label": "string",
       "title": "string?",
-      "description": "string?  A visible second line inside the button.",
-      "group": "string?  Renders the button inside that section, after its rows. Ungrouped actions stay at the foot.",
+      "group": "string?  Renders the button inside that section, after its rows. Ungrouped actions render last.",
       "when": "(env) => boolean",
       "run": "(api) => void"
     },
@@ -170,7 +160,6 @@
     "can",
     "movesFrom",
     "reset",
-    "link",
     "snapshot",
     "machine",
     "storageKey",
@@ -194,7 +183,7 @@
     "drag near a corner": "snap the panel to it (within 140px)"
   },
   "sections": {
-    "description": "Any machine, field or action may carry `group`. Controls sharing a group render under one heading.",
+    "description": "Any machine, field or action may carry `group`. Controls sharing a group render under one collapsible title. A section is a title plus its controls; never explanatory subtext.",
     "order": [
       "ungrouped controls first, in declaration order",
       "then sections in first-seen order across machines, fields, actions",

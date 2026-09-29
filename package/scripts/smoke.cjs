@@ -1,0 +1,8 @@
+const assert = require("node:assert")
+const root = require("../dist/index.cjs")
+const core = require("../dist/core/index.cjs")
+assert.strictEqual(root.ScenarioError, core.ScenarioError)
+assert.strictEqual(typeof root.ScenarioProvider, "function")
+const m = core.defineMachine({ fields: { on: { type: "boolean", label: "On", default: false } } })
+assert.deepStrictEqual(m.initial().fields, { on: false })
+console.log("smoke ok")

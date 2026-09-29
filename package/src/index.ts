@@ -12,7 +12,7 @@ export {
   type ScenarioApi,
   type ScenarioProviderProps,
 } from "./react/provider"
-export { useScenario, useScenarioValue } from "./react/use-scenario"
+export { useScenario, useScenarioSelector, useScenarioValue, type TypedScenario } from "./react/use-scenario"
 export { ScenarioPanel, type PanelPosition, type ScenarioPanelProps } from "./react/panel"
 export {
   useDrag,

@@ -11,6 +11,8 @@ export {
   ScenarioError,
   visible,
   warn,
+  has,
+  suggest,
   type CompiledMachine,
   type Machine,
   type PartialSnapshot,
@@ -22,7 +24,10 @@ export {
   fromSearch,
   readStorage,
   resolve,
-  toLink,
+  mergeSearch,
   toSearch,
+  diffFromDefaults,
+  shapeOf,
   writeStorage,
 } from "./serialize"
+export { describe } from "./describe"

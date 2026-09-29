@@ -172,44 +172,18 @@ describe("config validation", () => {
   })
 })
 
-describe("groups and descriptions", () => {
-  it("accepts group and description on a machine, a field and an action", () => {
+describe("groups", () => {
+  it("accepts group on a machine, a field and an action", () => {
     const m = defineMachine({
       machines: {
-        account: {
-          label: "Account",
-          group: "Who",
-          description: "Drives the whole sign-up tuple.",
-          initial: "fresh",
-          states: { fresh: {}, seasoned: {} },
-        },
+        account: { label: "Account", group: "Who", initial: "fresh", states: { fresh: {}, seasoned: {} } },
       },
-      fields: {
-        dark: {
-          type: "boolean",
-          default: false,
-          group: "Look",
-          description: "Mirrors onto <html>.",
-        },
-      },
-      actions: [
-        {
-          id: "restart",
-          label: "Restart",
-          group: "Who",
-          description: "Back to the front door.",
-          run: (api) => api.reset(),
-        },
-      ],
+      fields: { dark: { type: "boolean", default: false, group: "Look" } },
+      actions: [{ id: "restart", label: "Restart", group: "Who", run: (api) => api.reset() }],
     })
-    /* The point is the compile, not the values: a config carrying the new
-       keys must neither throw nor fail to typecheck. */
     expect(m.config.machines.account.group).toBe("Who")
-    expect(m.config.machines.account.description).toBe("Drives the whole sign-up tuple.")
     expect(m.config.fields.dark.group).toBe("Look")
-    expect(m.config.fields.dark.description).toBe("Mirrors onto <html>.")
     expect(m.config.actions[0].group).toBe("Who")
-    expect(m.config.actions[0].description).toBe("Back to the front door.")
     expect(m.contextOf(m.initial())).toEqual({ account: "fresh", dark: false })
   })
 })
@@ -234,10 +208,14 @@ describe("context", () => {
 
   it("falls back to the initial state when a snapshot names an unknown one", () => {
     const ctx = aim.contextOf({ machines: { journey: "ghost" }, fields: {} })
-    expect(ctx.journey).toBe("ghost")
-    // The cursor is echoed, but the tuple comes from the initial state rather
-    // than being left undefined and crashing whatever reads `step`.
+    // Cursor and tuple both fall back together, so they can never disagree.
+    expect(ctx.journey).toBe("firstRun")
     expect(ctx.step).toBe(1)
+  })
+
+  it("does not treat inherited property names as states", () => {
+    const ctx = aim.contextOf({ machines: { journey: "constructor" }, fields: {} })
+    expect(ctx.journey).toBe("firstRun")
   })
 })
 
@@ -253,5 +231,38 @@ describe("sanitize", () => {
 
   it("drops a field value of the wrong type", () => {
     expect(aim.sanitize({ fields: { hasEvents: "yes" as never } })).toEqual({})
+  })
+})
+
+describe("stricter compile checks", () => {
+  const one = { a: { label: "A" } }
+  it("throws when states assign different keys", () => {
+    expect(() =>
+      defineMachine({
+        machines: {
+          m: {
+            label: "M",
+            initial: "a",
+            states: { a: { label: "A", assign: { x: 1 } }, b: { label: "B", assign: {} } },
+          },
+        },
+      })
+    ).toThrow(ScenarioError)
+  })
+  it("throws on a number default outside its range", () => {
+    expect(() =>
+      defineMachine({ fields: { n: { type: "number", label: "N", default: 50, max: 10 } } })
+    ).toThrow(/range|max|outside/i)
+  })
+  it("throws on a range slider without bounds", () => {
+    expect(() =>
+      defineMachine({ fields: { n: { type: "number", label: "N", default: 1, control: "range" } } })
+    ).toThrow(ScenarioError)
+  })
+  it("throws on an empty label or group", () => {
+    expect(() => defineMachine({ fields: { n: { type: "boolean", label: " ", default: true } } })).toThrow(ScenarioError)
+    expect(() =>
+      defineMachine({ machines: { m: { label: "M", group: "", initial: "a", states: one } } })
+    ).toThrow(ScenarioError)
   })
 })
