@@ -69,8 +69,15 @@ describe("the panel", () => {
     mount()
     await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
     // firstRun -> active is not declared.
-    expect(screen.getByRole("button", { name: "Active" }).hasAttribute("disabled")).toBe(true)
-    expect(screen.getByRole("button", { name: "Key made" }).hasAttribute("disabled")).toBe(false)
+    const active = screen.getByRole("button", { name: "Active" })
+    expect(active.getAttribute("aria-disabled")).toBe("true")
+    expect(screen.getByRole("button", { name: "Key made" }).getAttribute("aria-disabled")).toBe(null)
+    /* Still focusable, and says why through its description. */
+    expect(active.hasAttribute("disabled")).toBe(false)
+    const why = document.getElementById(active.getAttribute("aria-describedby") ?? "")
+    expect(why?.textContent).toMatch(/Not reachable from First run\. From here: /)
+    await user.click(active)
+    expect(screen.getByRole("button", { name: "Active" }).getAttribute("aria-pressed")).toBe("false")
   })
 
   it("closes on Escape", async () => {
@@ -127,14 +134,12 @@ describe("the panel", () => {
   })
 })
 
-/* A config that uses every new key: two groups, a description on each kind of
-   control, and one action grouped while another stays loose. */
+/* Two groups, and one action grouped while another stays loose. */
 const grouped = defineMachine({
   machines: {
     account: {
       label: "Account",
       group: "Who",
-      description: "New, first project, or a whole team.",
       initial: "fresh",
       states: { fresh: { label: "Fresh" }, team: { label: "Team" } },
     },
@@ -150,7 +155,6 @@ const grouped = defineMachine({
       label: "Unread",
       default: 0,
       group: "Inbox",
-      description: "How many the badge shows.",
     },
     trial: { type: "boolean", label: "Trial expired", default: false, group: "Who" },
   },
@@ -159,80 +163,116 @@ const grouped = defineMachine({
       id: "restart",
       label: "Restart",
       group: "Who",
-      description: "Resets and returns to sign in.",
       run: (api) => api.reset(),
     },
-    { id: "copy", label: "Copy link", run: () => {} },
+    { id: "copy", label: "Seed data", run: () => {} },
   ],
 })
 
-async function openGrouped() {
+async function openGrouped(props: Partial<React.ComponentProps<typeof ScenarioPanel>> = {}) {
   const user = userEvent.setup()
   render(
     <ScenarioProvider machine={grouped} storageKey="panel-group-test-v1" enabled>
-      <ScenarioPanel />
+      <ScenarioPanel {...props} />
     </ScenarioProvider>
   )
   await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
   return screen.getByRole("dialog")
 }
 
-describe("groups and descriptions", () => {
-  it("renders group headings, in first-seen order", async () => {
+describe("groups", () => {
+  it("renders section titles, in first-seen order", async () => {
     await openGrouped()
-    const headings = screen.getAllByRole("heading")
-    expect(headings.map((h) => h.textContent)).toEqual(["Who", "Inbox"])
-    expect(headings.every((h) => h.classList.contains("pm-section-title"))).toBe(true)
+    const titles = [...document.querySelectorAll(".pm-section-title")]
+    expect(titles.map((h) => h.textContent)).toEqual(["Who", "Inbox"])
   })
 
   it("puts the row for each grouped control inside its section, and ungrouped rows before any section", async () => {
     const dialog = await openGrouped()
-    const who = screen.getByRole("region", { name: "Who" })
-    const inbox = screen.getByRole("region", { name: "Inbox" })
+    const who = screen.getByRole("group", { name: "Who" })
+    const inbox = screen.getByRole("group", { name: "Inbox" })
     expect(who.contains(screen.getByRole("group", { name: "Account" }))).toBe(true)
     expect(who.contains(screen.getByRole("group", { name: "Trial expired" }))).toBe(true)
     expect(inbox.contains(screen.getByRole("group", { name: "Unread" }))).toBe(true)
 
     const theme = screen.getByRole("group", { name: "Theme" })
     expect(who.contains(theme)).toBe(false)
-    /* Ungrouped rows come first in document order. */
     expect(theme.compareDocumentPosition(who) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(dialog.querySelectorAll(".pm-section")).toHaveLength(2)
   })
 
-  it("shows a description as visible text, not only as a title", async () => {
+  it("renders a section as a title and its controls, and nothing else", async () => {
     await openGrouped()
-    const text = screen.getByText("New, first project, or a whole team.")
-    expect(text.tagName).toBe("P")
-    expect(text.classList.contains("pm-description")).toBe(true)
-    const group = screen.getByRole("group", { name: "Account" })
-    expect(group.getAttribute("aria-describedby")).toBe(text.id)
-    expect(screen.getByText("How many the badge shows.").classList.contains("pm-description")).toBe(true)
+    const who = screen.getByRole("group", { name: "Who" })
+    const kids = [...who.children].map((c) => c.className)
+    expect(kids[0]).toBe("pm-section-title")
+    expect(kids.slice(1).every((c) => c === "pm-row" || c === "pm-actions")).toBe(true)
+    expect(who.querySelectorAll("p")).toHaveLength(0)
+    const restart = screen.getByRole("button", { name: "Restart" })
+    expect(restart.textContent).toBe("Restart")
   })
 
-  it("renders a grouped action inside its section and an ungrouped one in the foot", async () => {
-    const dialog = await openGrouped()
-    const who = screen.getByRole("region", { name: "Who" })
-    const restart = screen.getByRole("button", { name: /restart/i })
-    const copy = screen.getByRole("button", { name: "Copy link" })
+  it("collapses a section and remembers it", async () => {
+    const user = userEvent.setup()
+    await openGrouped()
+    await user.click(screen.getByRole("button", { name: "Who" }))
+    expect(screen.queryByRole("group", { name: "Account" })).toBe(null)
+    expect(screen.getByRole("button", { name: "Who" }).getAttribute("aria-expanded")).toBe("false")
+    const saved = JSON.parse(localStorage.getItem("panel-group-test-v1:pm-panel-ui") ?? "{}")
+    expect(saved.collapsed).toEqual(["Who"])
+  })
+
+  it("renders a grouped action inside its section and an ungrouped one outside", async () => {
+    await openGrouped()
+    const who = screen.getByRole("group", { name: "Who" })
+    const restart = screen.getByRole("button", { name: "Restart" })
+    const copy = screen.getByRole("button", { name: "Seed data" })
     expect(who.contains(restart)).toBe(true)
     expect(who.contains(copy)).toBe(false)
-    expect(dialog.querySelectorAll(".pm-section").length).toBeGreaterThan(0)
-    /* The foot is the last `.pm-actions` in the panel, outside every section. */
-    const foot = copy.closest(".pm-actions")
-    expect(foot?.closest(".pm-section")).toBe(null)
-    expect(restart.querySelector(".pm-action-description")?.textContent).toBe(
-      "Resets and returns to sign in."
-    )
+    expect(copy.closest(".pm-actions")?.closest(".pm-section")).toBe(null)
   })
 
-  it("renders no headings and no sections for a config without groups", async () => {
+  it("renders no sections for a config without groups", async () => {
     const user = userEvent.setup()
     mount()
     await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
     const dialog = screen.getByRole("dialog")
-    expect(screen.queryAllByRole("heading")).toEqual([])
     expect(dialog.querySelectorAll(".pm-section")).toHaveLength(0)
-    expect(dialog.querySelectorAll(".pm-description")).toHaveLength(0)
+    expect(dialog.querySelectorAll("p")).toHaveLength(0)
+  })
+})
+
+describe("panel behaviour", () => {
+  it("moves focus into the panel on open", async () => {
+    await openGrouped()
+    expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true)
+  })
+
+  it("stays open on an outside click once pinned", async () => {
+    const user = userEvent.setup()
+    await openGrouped()
+    await user.click(screen.getByRole("button", { name: "Pin open" }))
+    await user.click(document.body)
+    expect(screen.getByRole("dialog")).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: /unpin/i }))
+    await user.click(document.body)
+    expect(screen.queryByRole("dialog")).toBe(null)
+  })
+
+  it("shows a filter past eight rows and narrows by label", async () => {
+    const user = userEvent.setup()
+    const fields = Object.fromEntries(
+      Array.from({ length: 9 }, (_, i) => [`f${i}`, { type: "boolean" as const, label: `Flag ${i}`, default: false }]),
+    )
+    const many = defineMachine({ machines: {}, fields })
+    render(
+      <ScenarioProvider machine={many} storageKey="panel-many-v1" enabled>
+        <ScenarioPanel />
+      </ScenarioProvider>
+    )
+    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
+    await user.type(screen.getByRole("searchbox", { name: "Filter controls" }), "Flag 3")
+    expect(screen.getAllByRole("group").map((g) => g.getAttribute("aria-labelledby") && g.textContent)).toHaveLength(1)
+    expect(screen.getByRole("group", { name: "Flag 3" })).toBeTruthy()
   })
 })

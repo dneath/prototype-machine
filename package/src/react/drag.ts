@@ -312,13 +312,25 @@ export interface UseDragResult {
 }
 
 export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): UseDragResult {
-  const [placement, setPlacement] = React.useState<Placement | null>(null)
+  const [placement, setPlacementState] = React.useState<Placement | null>(null)
+  const placementRef = React.useRef<Placement | null>(null)
+  const setPlacement = React.useCallback((next: Placement | null) => {
+    placementRef.current = next
+    setPlacementState(next)
+  }, [])
   const [dragging, setDragging] = React.useState(false)
   const [snapPreview, setSnapPreview] = React.useState<Corner | null>(null)
   const [settling, setSettling] = React.useState(false)
 
   const startRef = React.useRef<DragStart | null>(null)
   const movedRef = React.useRef(false)
+  const frameRef = React.useRef<number | null>(null)
+  const pointerRef = React.useRef<Point | null>(null)
+  const cancelFrame = () => {
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+    frameRef.current = null
+  }
+  React.useEffect(() => cancelFrame, [])
 
   const measure = React.useCallback((): Size => {
     const rect = elementRef.current?.getBoundingClientRect()
@@ -338,7 +350,7 @@ export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): Us
         ? { ...stored, ...clampToViewport(stored, measure(), viewport()) }
         : stored
     )
-  }, [enabled, storageKey, measure])
+  }, [enabled, storageKey, measure, setPlacement])
 
   /* Only a FREE placement needs clamping. A corner placement is rendered by its
      CSS class, so the browser keeps it anchored through a resize for free —
@@ -348,14 +360,15 @@ export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): Us
      matters because one dragged to the bottom edge while collapsed would hang
      off it once expanded — hence the ResizeObserver rather than a measurement
      taken during render. */
+  const isFree = placement?.kind === "free"
   React.useEffect(() => {
-    if (!enabled) return
-    const clamp = () =>
-      setPlacement((current) =>
-        current && current.kind === "free"
-          ? { kind: "free", ...clampToViewport(current, measure(), viewport()) }
-          : current
-      )
+    if (!enabled || !isFree) return
+    const clamp = () => {
+      const current = placementRef.current
+      if (!current || current.kind !== "free") return
+      const next = clampToViewport(current, measure(), viewport())
+      if (next.x !== current.x || next.y !== current.y) setPlacement({ kind: "free", ...next })
+    }
     clamp()
     window.addEventListener("resize", clamp)
 
@@ -368,7 +381,7 @@ export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): Us
       window.removeEventListener("resize", clamp)
       observer?.disconnect()
     }
-  }, [enabled, measure, elementRef])
+  }, [enabled, isFree, measure, elementRef, setPlacement])
 
   /* The settle transition lives for exactly one animation, then gets out of the
      way — leaving it on would animate a resize-driven clamp too. */
@@ -411,20 +424,36 @@ export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): Us
         movedRef.current = true
         setDragging(true)
       }
-      const size = measure()
-      const view = viewport()
-      const next = clampToViewport(dragOffset(start, pointer), size, view)
-      setPlacement({ kind: "free", ...next })
-      /* Predicted, not sprung on you: the corner lights up before you let go. */
-      setSnapPreview(snapTarget(next, size, view))
+      /* One render per frame, however fast the pointer reports. */
+      pointerRef.current = pointer
+      if (frameRef.current !== null) return
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null
+        const at = pointerRef.current
+        const from = startRef.current
+        if (!at || !from) return
+        const size = measure()
+        const view = viewport()
+        const next = clampToViewport(dragOffset(from, at), size, view)
+        setPlacement({ kind: "free", ...next })
+        /* Predicted, not sprung on you: the corner lights up before you let go. */
+        setSnapPreview(snapTarget(next, size, view))
+      })
     },
 
     onPointerUp(event: React.PointerEvent) {
       const el = event.currentTarget as Element
       releasePointer(el, event.pointerId)
       if (!startRef.current) return
+      const start = startRef.current
       startRef.current = null
+      cancelFrame()
       if (!movedRef.current) return
+      const last = pointerRef.current
+      if (last) {
+        const next = clampToViewport(dragOffset(start, last), measure(), viewport())
+        placementRef.current = { kind: "free", ...next }
+      }
 
       movedRef.current = false
       setDragging(false)
@@ -435,19 +464,20 @@ export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): Us
          and this is where a near-miss becomes a corner. */
       const size = measure()
       const view = viewport()
-      setPlacement((current) => {
-        if (!current || current.kind !== "free") return current
+      const current = placementRef.current
+      if (current && current.kind === "free") {
         const corner = snapTarget(current, size, view)
         const next: Placement = corner ? { kind: "corner", corner } : current
+        setPlacement(next)
         writePlacement(storageKey, next)
-        return next
-      })
+      }
       setSettling(true)
     },
 
     onPointerCancel(event: React.PointerEvent) {
       releasePointer(event.currentTarget as Element, event.pointerId)
       startRef.current = null
+      cancelFrame()
       movedRef.current = false
       setDragging(false)
       setSnapPreview(null)

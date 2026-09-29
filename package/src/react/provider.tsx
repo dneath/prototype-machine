@@ -7,17 +7,20 @@ import {
   type Machine,
   type PartialSnapshot,
   type Snapshot,
+  has,
   isDev,
-} from "../core/machine"
-import { type Env, type Primitive } from "../core/schema"
+  isValidFieldValue,
+  suggest,
+} from "../core/index"
+import { type Env, type Primitive } from "../core/index"
 import {
   clearStorage,
   fromSearch,
+  mergeSearch,
   readStorage,
   resolve,
-  toLink,
   writeStorage,
-} from "../core/serialize"
+} from "../core/index"
 
 export interface ScenarioApi {
   /** Change free fields. Refuses keys a machine owns. */
@@ -29,9 +32,6 @@ export interface ScenarioApi {
   movesFrom(machineId: string): ReadonlyArray<string>
   /** Back to the config's defaults, and forget what was stored. */
   reset(): void
-
-  /** A URL that reproduces the current scenario. */
-  link(): string
 
   snapshot: Snapshot
   machine: CompiledMachine
@@ -77,7 +77,7 @@ export interface ScenarioProviderProps {
    * render it under the new reading.
    */
   storageKey: string
-  /** Current route, for `when` predicates and the report's Route line. */
+  /** Current route, for `when` predicates. */
   path?: string | null
   /** Router push, for declared actions. Without it, `navigate` is a no-op. */
   navigate?: (to: string) => void
@@ -87,13 +87,23 @@ export interface ScenarioProviderProps {
    * Whether the CONTROLS mount. Defaults to "not a production build".
    *
    * Context is always provided regardless — consumers read it in every build,
-   * and a deployed review build should still honour a shared scenario link.
-   * To keep the panel's bytes out of a production bundle entirely, alias the
-   * module at the bundler; see the README.
+   * and a deployed review build should still honour a scenario query string.
+   * Production builds resolve to a stub panel through the "production" export
+   * condition, so the panel's bytes never ship.
    */
   enabled?: boolean
+  /**
+   * Keep the address bar in step with the scenario, using `replaceState` so
+   * history is never polluted. Off by default: the query string is read once
+   * and then removed, so a reload shows what you last clicked, not the link.
+   */
+  syncUrl?: boolean
+  /** Follow scenario changes saved by other tabs on the same storageKey. Off by default. */
+  syncTabs?: boolean
   children?: React.ReactNode
 }
+
+const liveKeys = new Map<string, number>()
 
 export function ScenarioProvider({
   machine,
@@ -102,30 +112,129 @@ export function ScenarioProvider({
   navigate,
   env: extraEnv,
   enabled,
+  syncUrl = false,
+  syncTabs = false,
   children,
 }: ScenarioProviderProps) {
   const m = machine as CompiledMachine
   const hydrated = useHydrated()
 
-  const [edits, setEdits] = React.useState<PartialSnapshot>({})
+  const [edits, setEditsState] = React.useState<PartialSnapshot>({})
+  /* The latest edit layer, readable synchronously. Two calls in one handler
+     each build on the previous one instead of on the last render's state. */
+  const editsRef = React.useRef<PartialSnapshot>(edits)
+  const initialEdits = React.useRef(edits)
+  const setEdits = React.useCallback((next: PartialSnapshot) => {
+    editsRef.current = next
+    setEditsState(next)
+  }, [])
   const [open, setOpen] = React.useState(false)
 
   /* Server and first client render both produce the config's defaults, so the
      markup matches and nothing has to be suppressed. Storage and the URL are
-     layered on from the render AFTER hydration — a read, not a write. */
+     layered on from the render AFTER hydration — a read, not a write.
+
+     A query string that names any scenario key is the whole scenario: the
+     storage layer is skipped, so this browser's leftovers cannot leak in. */
+  const [urlVersion, setUrlVersion] = React.useState(0)
   const layers = React.useMemo<ReadonlyArray<PartialSnapshot>>(() => {
     if (!hydrated) return []
-    /* URL last: a link has to beat whatever this browser did earlier. */
-    return [readStorage(m, storageKey), fromSearch(m, window.location.search)]
-  }, [hydrated, m, storageKey])
+    const search = window.location.search
+    if (hasScenarioParams(m, search)) return [fromSearch(m, search)]
+    return [readStorage(m, storageKey)]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, m, storageKey, urlVersion])
+
+  /* A scenario that arrived by URL is persisted straight away, so it survives
+     the query being stripped or the tab being reloaded. */
+  React.useEffect(() => {
+    if (!hydrated) return
+    const search = window.location.search
+    if (!hasScenarioParams(m, search)) return
+    writeStorage(m, storageKey, resolve(m, layers))
+    if (!syncUrl) {
+      const url = window.location.pathname + mergeSearch(m, search, null) + window.location.hash
+      window.history.replaceState(window.history.state, "", url)
+    }
+  }, [hydrated, m, storageKey, layers, syncUrl])
+
+  /* Back/forward with a different query: take it as the new scenario. */
+  React.useEffect(() => {
+    if (!syncUrl) return
+    const onPop = () => {
+      setEdits({})
+      initialEdits.current = editsRef.current
+      setUrlVersion((v) => v + 1)
+    }
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [syncUrl, setEdits])
+
+  const layersRef = React.useRef(layers)
+  layersRef.current = layers
 
   const snapshot = React.useMemo(() => resolve(m, [...layers, edits]), [m, layers, edits])
 
-  /* Writing to an external system is exactly what an effect is for. */
+  /* Only writes once something was actually edited, batched so a slider drag
+     or typing does not hit storage on every event, and flushed on pagehide. */
+  const pending = React.useRef<(() => void) | null>(null)
   React.useEffect(() => {
-    if (!hydrated) return
-    writeStorage(storageKey, snapshot)
-  }, [hydrated, storageKey, snapshot])
+    if (!hydrated || edits === initialEdits.current) return
+    const write = () => {
+      pending.current = null
+      writeStorage(m, storageKey, snapshot)
+    }
+    pending.current = write
+    const timer = window.setTimeout(write, 150)
+    return () => window.clearTimeout(timer)
+  }, [hydrated, m, storageKey, snapshot, edits])
+
+  React.useEffect(() => {
+    if (!isDev) return
+    const count = (liveKeys.get(storageKey) ?? 0) + 1
+    liveKeys.set(storageKey, count)
+    if (count > 1) {
+      console.warn(`[prototype-machine] Two providers share the storageKey "${storageKey}". They will overwrite each other's saved scenario; give each its own key.`)
+    }
+    return () => {
+      const left = (liveKeys.get(storageKey) ?? 1) - 1
+      if (left <= 0) liveKeys.delete(storageKey)
+      else liveKeys.set(storageKey, left)
+    }
+  }, [storageKey])
+
+  /* Another tab saved a scenario under the same key: follow it. */
+  React.useEffect(() => {
+    if (!syncTabs) return
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== storageKey) return
+      setEdits({})
+      initialEdits.current = editsRef.current
+      setUrlVersion((v) => v + 1)
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [syncTabs, storageKey, setEdits])
+
+  React.useEffect(() => {
+    const flush = () => pending.current?.()
+    window.addEventListener("pagehide", flush)
+    return () => {
+      window.removeEventListener("pagehide", flush)
+      flush()
+    }
+  }, [])
+
+  /* Address bar sync: one replaceState per frame at most, only our keys. */
+  React.useEffect(() => {
+    if (!syncUrl || !hydrated) return
+    const frame = window.requestAnimationFrame(() => {
+      const next = mergeSearch(m, window.location.search, snapshot)
+      if (next === window.location.search) return
+      window.history.replaceState(window.history.state, "", window.location.pathname + next + window.location.hash)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [syncUrl, hydrated, m, snapshot])
 
   const context = React.useMemo(() => m.contextOf(snapshot), [m, snapshot])
 
@@ -154,20 +263,24 @@ export function ScenarioProvider({
      React is free to run twice. */
   const api = React.useMemo<Scenario>(() => {
     const go = (machineId: string, stateId: string) => {
-      const def = m.config.machines[machineId]
+      const def = has(m.config.machines, machineId) ? m.config.machines[machineId] : undefined
       if (!def) {
-        if (isDev) console.warn(`[prototype-machine] No machine called "${machineId}".`)
+        if (isDev) console.warn(
+            `[prototype-machine] No machine called "${machineId}".${suggest(machineId, Object.keys(m.config.machines))}`
+          )
         return
       }
-      if (!def.states[stateId]) {
+      if (!has(def.states, stateId)) {
         if (isDev) {
           console.warn(
-            `[prototype-machine] "${machineId}" has no state "${stateId}". Known: ${Object.keys(def.states).join(", ")}.`
+            `[prototype-machine] "${machineId}" has no state "${stateId}".${suggest(stateId, Object.keys(def.states))} Known: ${Object.keys(def.states).join(", ")}.`
           )
         }
         return
       }
-      const from = snapshot.machines[machineId] ?? def.initial
+      const current = editsRef.current
+      const live = resolve(m, [...layersRef.current, current])
+      const from = live.machines[machineId] ?? def.initial
       if (!m.can(machineId, from, stateId)) {
         if (isDev) {
           console.warn(
@@ -177,15 +290,15 @@ export function ScenarioProvider({
         return
       }
       setEdits({
-        machines: { ...edits.machines, [machineId]: stateId },
-        fields: { ...edits.fields },
+        machines: { ...current.machines, [machineId]: stateId },
+        fields: { ...current.fields },
       })
     }
 
     const set = (patch: Record<string, Primitive>) => {
       const fields: Record<string, Primitive> = {}
       for (const [key, value] of Object.entries(patch)) {
-        const owner = m.ownerOf[key]
+        const owner = has(m.ownerOf, key) ? m.ownerOf[key] : undefined
         if (owner) {
           if (isDev) {
             console.warn(
@@ -194,16 +307,30 @@ export function ScenarioProvider({
           }
           continue
         }
-        if (!(key in m.config.fields)) {
-          if (isDev) console.warn(`[prototype-machine] "${key}" is not a declared field.`)
+        if (!has(m.config.fields, key)) {
+          if (isDev) console.warn(
+              `[prototype-machine] "${key}" is not a declared field.${suggest(key, Object.keys(m.config.fields))}`
+            )
+          continue
+        }
+        if (!isValidFieldValue(m.config.fields[key], value)) {
+          if (isDev) {
+            const def = m.config.fields[key]
+            const range =
+              def.type === "number"
+                ? ` Expected a number${def.min !== undefined ? ` >= ${def.min}` : ""}${def.max !== undefined ? ` <= ${def.max}` : ""}.`
+                : ` Expected a ${def.type} value.`
+            console.warn(`[prototype-machine] Refusing ${JSON.stringify(value)} for "${key}".${range}`)
+          }
           continue
         }
         fields[key] = value
       }
       if (!Object.keys(fields).length) return
+      const current = editsRef.current
       setEdits({
-        machines: { ...edits.machines },
-        fields: { ...edits.fields, ...fields },
+        machines: { ...current.machines },
+        fields: { ...current.fields, ...fields },
       })
     }
 
@@ -228,7 +355,6 @@ export function ScenarioProvider({
         const fresh = m.initial()
         setEdits({ machines: { ...fresh.machines }, fields: { ...fresh.fields } })
       },
-      link: () => toLink(m, snapshot),
       snapshot,
       machine: m,
       storageKey,
@@ -247,11 +373,60 @@ export function ScenarioProvider({
       setOpen,
     }
   }, [
-    context, m, snapshot, edits, storageKey,
-    env, navigate, path, hydrated, enabled, open,
+    context, m, snapshot, storageKey, setEdits,
+    env, navigate, hydrated, enabled, open,
   ])
 
-  return <Ctx.Provider value={api}>{children}</Ctx.Provider>
+  const store = React.useState(createStore)[0]
+  React.useLayoutEffect(() => {
+    store.publish(context)
+  }, [store, context])
+  if (!store.ready) store.seed(context)
+
+  return (
+    <StoreCtx.Provider value={store}>
+      <Ctx.Provider value={api}>{children}</Ctx.Provider>
+    </StoreCtx.Provider>
+  )
 }
 
 export { Ctx as ScenarioContext }
+
+export interface ScenarioStore {
+  ready: boolean
+  get(): Record<string, unknown>
+  subscribe(listener: () => void): () => void
+  seed(value: Record<string, unknown>): void
+  publish(value: Record<string, unknown>): void
+}
+
+/* A stable store beside the context, so a selector hook re-renders only when
+   the value it picked actually changes. */
+function createStore(): ScenarioStore {
+  let current: Record<string, unknown> = {}
+  const listeners = new Set<() => void>()
+  return {
+    ready: false,
+    get: () => current,
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    seed(value) {
+      current = value
+      this.ready = true
+    },
+    publish(value) {
+      if (value === current) return
+      current = value
+      for (const listener of listeners) listener()
+    },
+  }
+}
+
+export const StoreCtx = React.createContext<ScenarioStore | null>(null)
+
+function hasScenarioParams(m: CompiledMachine, search: string): boolean {
+  const params = new URLSearchParams(search)
+  return Object.keys(m.params).some((key) => params.has(key))
+}
