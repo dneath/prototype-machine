@@ -18,10 +18,24 @@ const CSS = `
 .pm-root {
   --pm-bg: #171717;
   --pm-fg: #ffffff;
-  --pm-line: rgba(255, 255, 255, 0.2);
+  --pm-line: rgba(255, 255, 255, 0.35);
   --pm-line-strong: rgba(255, 255, 255, 0.5);
   --pm-muted: rgba(255, 255, 255, 0.5);
   --pm-text: rgba(255, 255, 255, 0.7);
+  /* An opaque field fill, not a translucent one. A native <select> hands its own
+     background to the popup the browser draws, and a 5%-white fill composites
+     against the HOST page rather than this panel — so the list came out the colour
+     of whatever the product happened to be painting behind it. */
+  --pm-field: #212121;
+  /* The panel is dark whatever the host is.
+
+     color-scheme is inherited, and it is the property that decides how the browser
+     paints native form controls — the select popup, the scrollbars, the number
+     spinners. Left to inherit, a light-themed product drew a light popup list out
+     of a dark panel and resolved the option ink to the wrong end of the contrast.
+     This file's premise is that every property is stated explicitly because it
+     mounts into someone else's cascade; this is the one that got away. */
+  color-scheme: dark;
   position: fixed;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 12px;
@@ -119,8 +133,8 @@ const CSS = `
 .pm-icon-button {
   display: grid;
   place-content: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -142,24 +156,23 @@ const CSS = `
   text-transform: uppercase;
   color: var(--pm-muted);
 }
-.pm-description {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--pm-muted);
-  line-height: 1.35;
-  text-transform: none;
-  letter-spacing: 0;
-  margin: 2px 0 0;
-}
 .pm-options { display: flex; flex-wrap: wrap; gap: 4px; }
 
 /* A named group. The top border and margin are what make a run of rows read
    as a section rather than as more rows. */
 .pm-section { display: grid; gap: 10px; }
 .pm-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   margin: 8px 0 0;
-  padding-top: 12px;
+  padding: 12px 0 0;
+  border: 0;
   border-top: 1px solid var(--pm-line);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -180,7 +193,7 @@ const CSS = `
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
 }
-.pm-pill:hover:not(:disabled):not([aria-pressed="true"]) {
+.pm-pill:hover:not([aria-disabled="true"]):not([aria-pressed="true"]) {
   border-color: var(--pm-line-strong);
   color: var(--pm-fg);
 }
@@ -192,7 +205,7 @@ const CSS = `
 .pm-pill:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 /* An illegal move. Visible, so the shape of the journey is legible, but dead —
    the point is that you can see it is not available from here. */
-.pm-pill:disabled {
+.pm-pill[aria-disabled="true"] {
   opacity: 0.35;
   cursor: not-allowed;
   border-style: dashed;
@@ -203,7 +216,7 @@ const CSS = `
   padding: 5px 8px;
   border: 1px solid var(--pm-line);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--pm-field);
   color: var(--pm-fg);
   font: inherit;
   font-size: 12px;
@@ -212,7 +225,13 @@ const CSS = `
   outline: 2px solid #fff;
   outline-offset: 1px;
 }
-.pm-select option { color: initial; }
+/* Stated, not inherited. The initial value of the colour property is canvastext,
+   which resolves against whichever colour-scheme won — white in dark, black in
+   light — so the list read correctly only when the host agreed with the panel. */
+.pm-select option, .pm-select optgroup {
+  background-color: var(--pm-field);
+  color: var(--pm-fg);
+}
 
 .pm-range { width: 100%; accent-color: #fff; }
 .pm-number-row { display: flex; align-items: center; gap: 6px; }
@@ -231,15 +250,43 @@ const CSS = `
   cursor: pointer;
 }
 .pm-action:hover { border-color: var(--pm-line-strong); color: var(--pm-fg); }
-.pm-action-description {
-  display: block;
-  margin-top: 2px;
-  font-size: 10.5px;
-  line-height: 1.35;
-  color: var(--pm-muted);
+.pm-error {
+  margin: 0;
+  padding: 8px 12px;
+  color: #fca5a5;
 }
+
 .pm-action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .pm-actions { display: grid; gap: 6px; margin-top: 4px; }
+
+.pm-section-title:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pm-chevron { transition: transform 120ms ease; }
+.pm-section[data-collapsed="true"] .pm-chevron { transform: rotate(-90deg); }
+.pm-icon-button[aria-pressed="true"] { color: var(--pm-fg); }
+.pm-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 0 8px;
+  border: 1px solid var(--pm-line);
+  border-radius: 6px;
+  background: var(--pm-field);
+  color: var(--pm-muted);
+}
+.pm-filter:focus-within { outline: 2px solid #fff; outline-offset: 1px; }
+.pm-filter input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--pm-fg);
+  font: inherit;
+  font-size: 12px;
+}
+.pm-empty { margin: 0; color: var(--pm-muted); }
 
 .pm-sr {
   position: absolute;
@@ -262,7 +309,7 @@ const MARKER = "data-prototype-machine"
 let injected = false
 
 /** Idempotent, and safe to call from every component that needs styling. */
-export function injectStyles(): void {
+export function injectStyles(nonce?: string): void {
   if (injected || typeof document === "undefined") return
   if (document.querySelector(`style[${MARKER}]`)) {
     injected = true
@@ -270,6 +317,7 @@ export function injectStyles(): void {
   }
   const el = document.createElement("style")
   el.setAttribute(MARKER, "")
+  if (nonce) el.nonce = nonce
   el.textContent = CSS
   /* Prepended so a host that wants to restyle the panel can, without !important. */
   document.head.prepend(el)

@@ -6,7 +6,6 @@ import {
   fromSearch,
   readStorage,
   resolve,
-  toLink,
   toSearch,
   writeStorage,
 } from "./serialize"
@@ -29,6 +28,10 @@ describe("reading a query string", () => {
 
   it("ignores a state the config does not have rather than rendering it", () => {
     expect(fromSearch(aim, "?journey=ghost")).toEqual({})
+  })
+
+  it("ignores inherited property names rather than treating them as states", () => {
+    expect(fromSearch(aim, "?journey=constructor&role=__proto__&hasEvents=toString")).toEqual({})
   })
 
   it("ignores an unparseable field value", () => {
@@ -65,29 +68,45 @@ describe("writing a query string", () => {
     expect(back).toEqual(snapshot)
   })
 
-  it("carries hidden fields, because a link has to carry the whole scenario", () => {
+  it("carries hidden fields, because a query carries the whole scenario", () => {
     const search = toSearch(aim, {
       machines: {},
       fields: { chosenTool: "cursor" },
     })
     expect(search).toBe("chosenTool=cursor")
   })
-
-  it("builds a full link against a base URL", () => {
-    const link = toLink(
-      aim,
-      { machines: { journey: "active" }, fields: {} },
-      "http://localhost:3000/guardrails?stale=1"
-    )
-    expect(link).toBe("http://localhost:3000/guardrails?journey=active")
-  })
 })
 
 describe("storage", () => {
   it("round-trips a snapshot", () => {
     const snapshot = { machines: { journey: "keyMade" }, fields: { hasEvents: false } }
-    writeStorage(KEY, snapshot as never)
+    writeStorage(aim, KEY, resolve(aim, [snapshot]))
     expect(readStorage(aim, KEY)).toEqual(snapshot)
+  })
+
+  it("stores only what differs from the defaults", () => {
+    writeStorage(aim, KEY, aim.initial())
+    expect(window.localStorage.getItem(KEY)).toBeNull()
+    writeStorage(aim, KEY, resolve(aim, [{ fields: { hasEvents: false } }]))
+    const stored = JSON.parse(window.localStorage.getItem(KEY)!)
+    expect(stored.fields).toEqual({ hasEvents: false })
+    expect(stored.machines).toBeUndefined()
+  })
+
+  it("ignores storage written for a differently shaped config", () => {
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify({ shape: "stale", fields: { hasEvents: false } })
+    )
+    expect(readStorage(aim, KEY)).toEqual({})
+  })
+
+  it("ignores inherited property names in storage", () => {
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify({ machines: { journey: "constructor" }, fields: { toString: 1 } })
+    )
+    expect(readStorage(aim, KEY)).toEqual({})
   })
 
   it("survives corrupt contents", () => {
@@ -101,16 +120,15 @@ describe("storage", () => {
   })
 
   it("clears", () => {
-    writeStorage(KEY, aim.initial())
+    writeStorage(aim, KEY, resolve(aim, [{ fields: { hasEvents: false } }]))
     clearStorage(KEY)
     expect(readStorage(aim, KEY)).toEqual({})
   })
 })
 
 describe("precedence", () => {
-  /* defaults < storage < URL < this session's edits. The URL beating storage is
-     the load-bearing part: a link has to land the same way on a browser that
-     has been clicking around as on a fresh one. */
+  /* defaults < storage < URL < this session's edits. A query string
+     is an explicit instruction, so it beats what an earlier session stored. */
   it("lets each layer beat the one before it", () => {
     const stored = { machines: { journey: "parked" }, fields: { hasEvents: false } }
     const url = { machines: { journey: "keyMade" } }

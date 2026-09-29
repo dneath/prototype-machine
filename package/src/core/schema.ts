@@ -38,9 +38,6 @@ interface Common {
   label?: string
   /** Explains the state to whoever is clicking. Rendered as a hover tooltip. */
   note?: string
-  /** A visible line rendered under the row's label. Use it for what a
-   *  reviewer must read without hovering; `note` is for the rest. */
-  description?: string
   /**
    * Names a section header in the panel. Controls sharing a `group` render
    * together under that heading. Sections appear in the order their group is
@@ -119,9 +116,6 @@ export interface MachineStateDef {
 
 export interface MachineDef {
   label?: string
-  /** A visible line rendered under the row's label. `note` on a state is
-   *  the hover tooltip; this is read without hovering. */
-  description?: string
   /** Names a section header in the panel. Sections appear in first-seen
    *  order; ungrouped controls render first. */
   group?: string
@@ -158,10 +152,8 @@ export interface ActionDef {
   label: string
   /** Hover tooltip on the button. */
   title?: string
-  /** A visible second line inside the button, under the label. */
-  description?: string
   /** Renders the button inside that section, after the section's rows.
-   *  Ungrouped actions stay at the foot of the panel. */
+   *  Ungrouped actions render last, after the panel's children. */
   group?: string
   when?: (env: Env) => boolean
   run: (api: ActionApi) => void
@@ -192,12 +184,6 @@ export type Widen<T> = T extends string
     : T extends boolean
       ? boolean
       : T
-
-export type UnionToIntersection<U> = (
-  U extends unknown ? (k: U) => void : never
-) extends (k: infer I) => void
-  ? I
-  : never
 
 /** `{ journey: "parked" | "firstRun" | ... }` — the cursor of each machine. */
 export type MachineCursors<M> = {
@@ -265,3 +251,12 @@ export type BaseContext<M, F> = MachineCursors<M> & MachineAssigns<M> & FieldVal
  * constraint of the type it is inferring.
  */
 export type Context<M, F, D> = BaseContext<M, F> & D
+
+/** State ids of machine `K`. */
+export type StateOf<M, K extends keyof M> = M[K] extends { states: infer S } ? keyof S & string : string
+
+/** The API methods with ids and values checked against one config. */
+export interface TypedMoves<M, F> {
+  set(patch: Partial<FieldValues<F>>): void
+  go<K extends keyof M & string>(machine: K, state: StateOf<M, K>): void
+}
