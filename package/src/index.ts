@@ -28,6 +28,7 @@ export {
   type UseDragResult,
 } from "./react/drag"
 export { FieldRow, MachineRow, Pill, Row } from "./react/controls"
+export { Select, type SelectOption } from "./react/select"
 export { injectStyles, styles } from "./react/styles"
 
 export * from "./core/index"

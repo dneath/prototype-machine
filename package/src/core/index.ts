@@ -7,6 +7,7 @@ export {
   defineMachine,
   isDev,
   isValidFieldValue,
+  isDate,
   optionsOf,
   ScenarioError,
   visible,
@@ -30,4 +31,5 @@ export {
   shapeOf,
   writeStorage,
 } from "./serialize"
-export { describe } from "./describe"
+export { describe, summarize, changedCount } from "./describe"
+export { STRESS_NUMBERS, STRESS_TEXT, presetsOf, type LabelledPreset } from "./stress"

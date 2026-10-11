@@ -118,9 +118,29 @@ around the prototype.
 
 ## What you get
 
-**A panel.** Dark, plain and deliberately unlike your app, so it never becomes part of a
-screenshot or part of the critique. Drag it by the launcher or the header; drop it near
-a corner and it snaps.
+**A panel that owns its own look.** Dark, plain and deliberately unlike your app, so it
+never becomes part of a screenshot or part of the critique. It renders in its own shadow
+root on `<body>`: your app's resets, fonts, dark-mode classes and transforms can't reach
+it, it stays above your modals, and keystrokes typed into it never trigger your app's
+hotkeys. Its dropdowns are drawn by the panel, not the OS, so they're always readable.
+Drag it by the launcher or the header; drop it near a corner and it snaps.
+
+**Stress tests, one click away.** Give a string or number field `presets: "stress"` and
+it gets the worst cases real data produces: empty, 2,000 characters, an unbreakable URL,
+right-to-left, CJK, emoji sequences, markup, 1M. The panel's **Page** section flips the
+whole page to RTL, scales its text to 200%, and slows or pauses its animations — then
+puts everything back.
+
+```ts
+fields: {
+  title:  { type: "string", label: "Title", default: "Acme", presets: "stress" },
+  unread: { type: "number", label: "Unread", default: 3, min: 0, presets: [0, 1, 99, 1000] },
+}
+```
+
+**A way back.** Every changed field gets its own Reset, the header resets the lot (with
+a count), and Copy puts the current scenario on the clipboard as text for a bug report
+or an agent's prompt.
 
 **Layered state.** A scenario resolves in four layers, each beating the one before:
 
@@ -174,6 +194,13 @@ installed, these are the kinds of things to ask for.
 
 > Add a number field for the inbox's unread count (0 to 999, as a slider) and a boolean
 > for dark mode, so I can screenshot 0, 1 and 99+.
+
+**Stress-test a component**
+
+> Add stress presets to the project card: the project name as a multiline string field
+> with the built-in stress set, and the member count as a number with presets for 0, 1,
+> a full page of 25 and 26. Then check the card in RTL at 200% text from the Page
+> section.
 
 ## Documentation
 

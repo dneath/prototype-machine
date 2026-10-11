@@ -60,3 +60,24 @@ export const ChevronIcon = ({ size }: { size?: number }) => (
     <path d="m6 9 6 6 6-6" />
   </Svg>
 )
+
+export const CheckIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="M20 6 9 17l-5-5" />
+  </Svg>
+)
+
+/* Counter-clockwise: back to where it started. */
+export const ResetIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5" />
+  </Svg>
+)
+
+export const CopyIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <rect x="9" y="9" width="12" height="12" rx="2" />
+    <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+  </Svg>
+)

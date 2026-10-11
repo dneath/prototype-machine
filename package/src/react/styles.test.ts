@@ -2,30 +2,48 @@ import { describe, expect, it } from "vitest"
 
 import { styles } from "./styles"
 
+function block(selector: string): string {
+  const open = styles.indexOf(`${selector} {`)
+  expect(open).toBeGreaterThanOrEqual(0)
+  return styles.slice(open, styles.indexOf("\n}", open))
+}
+
 /**
- * The panel mounts into someone else's cascade, so anything it leaves to
- * inheritance is a property the host gets to decide. These pin the two that the
- * browser hands to native form controls — which is how a dark panel ended up
- * drawing a light <select> popup in a light-themed product.
+ * The panel lives in a shadow root, so no host selector reaches it — but
+ * inheritance and custom properties still cross the boundary. These pin the
+ * properties that the host would otherwise get to decide.
  */
 describe("panel styles", () => {
-  it("declares its own colour-scheme rather than inheriting the host's", () => {
-    const open = styles.indexOf(".pm-root {")
-    const root = styles.slice(open, styles.indexOf("\n}", open))
+  it("resets what inheritance carries across the shadow boundary", () => {
+    const host = block(":host")
+    for (const prop of ["all: initial", "color-scheme: dark", "direction: ltr", "letter-spacing: normal", "text-transform: none", "visibility: visible", "pointer-events: auto"]) {
+      expect(host).toContain(prop)
+    }
+  })
+
+  it("declares its own colour-scheme and direction on the panel root", () => {
+    const root = block(".pm-root")
     expect(root).toContain("color-scheme: dark")
+    expect(root).toContain("direction: ltr")
   })
 
-  it("fills form fields opaquely, because a <select> hands its background to the popup", () => {
+  it("fills form fields opaquely", () => {
     expect(styles).toContain("--pm-field:")
-    const open = styles.indexOf(".pm-select, .pm-text, .pm-number {")
-    expect(styles.slice(open, styles.indexOf("\n}", open))).toContain("background: var(--pm-field)")
+    expect(block(".pm-text, .pm-number, .pm-textarea, .pm-trigger")).toContain("background: var(--pm-field)")
   })
 
-  it("states option colours instead of resolving `initial` against whichever scheme won", () => {
+  it("draws its own dropdown instead of a native <select>", () => {
+    expect(styles).not.toContain(".pm-select")
+    expect(block(".pm-popover")).toContain("position: fixed")
+    expect(block(".pm-popover")).toContain("background: var(--pm-raise)")
+  })
+
+  it("never resolves colours against whichever scheme won", () => {
     expect(styles).not.toContain("color: initial")
-    const open = styles.indexOf(".pm-select option")
-    const block = styles.slice(open, styles.indexOf("\n}", open))
-    expect(block).toContain("background-color: var(--pm-field)")
-    expect(block).toContain("color: var(--pm-fg)")
+    expect(styles).not.toMatch(/\brem\b/)
+  })
+
+  it("keeps its form reset at class specificity so component rules win", () => {
+    expect(styles).toContain(".pm-root :where(button, input, textarea) {")
   })
 })

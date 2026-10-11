@@ -8,9 +8,9 @@ description: >-
   landed," or when a prototype has grown a
   hand-rolled panel of toggles that can be driven into states the product cannot reach.
   Covers modelling journeys vs free axes, transitions and guards, URL and storage
-  precedence. Triggers on: prototype controls, scenario switcher, state switcher, persona switcher, role switcher, dev
+  precedence, and stress-testing layouts with edge-case presets. Triggers on: prototype controls, scenario switcher, state switcher, persona switcher, role switcher, dev
   panel, debug panel, empty state, loading state, error state, forced state, first-run,
-  onboarding state, feature flag panel, prototype-machine, defineMachine, ScenarioPanel,
+  onboarding state, edge cases, stress test, long text, RTL, feature flag panel, prototype-machine, defineMachine, ScenarioPanel,
   useScenario. NOT for production feature flags or real application state — this is
   scaffolding for showing a design, and it says so out loud.
 ---
@@ -60,14 +60,14 @@ and to wire the panel that drives it.
 
 ## Setup check
 
-This guidance targets **prototype-machine 0.9.0**.
+This guidance targets **prototype-machine 0.10.0**.
 
 1. Read the project's `package.json` and lockfile before touching anything. Check
    whether `prototype-machine` is already installed and at which version.
 2. **Never add or upgrade a dependency silently.** If the user authorises it, pin the
    version:
    ```bash
-   npm install --save-exact prototype-machine@0.9.0 -D
+   npm install --save-exact prototype-machine@0.10.0 -D
    ```
 3. **Never copy the package's source into the app.** It is an npm dependency, not a
    snippet to paste. If the user wants to modify it, they change the package.
@@ -129,7 +129,9 @@ not tell anyone to press one.
    machine. Recipe 4, the migration recipe.
 5. **A control that only makes sense on one screen** → `when: (env) => env.path === "/signin"`.
 6. **Config throws at boot** → the message names the problem and the fix. It is meant to.
-7. **Anything about production flags, real auth, or persisted user settings** → wrong
+7. **"Stress-test this layout" / "what happens with a long name, RTL, big text"** →
+   fields with `presets: "stress"`, plus the panel's built-in Page tools. Recipe 8.
+8. **Anything about production flags, real auth, or persisted user settings** → wrong
    tool. Say so.
 
 ## Design principles
@@ -141,9 +143,11 @@ not tell anyone to press one.
    journey and has no illegal moves. Declaring a fully-connected map by hand is noise
    that will drift.
 3. **The panel must not look like the product.** It ships deliberately foreign — dark
-   slab, system font, no design tokens. Do not restyle it into the design system. A
-   panel drawn in the product's language becomes part of the screenshot and part of the
-   critique.
+   slab, system font, no design tokens — and it renders in its own shadow root on
+   `<body>`, so the product's CSS cannot reach it. Do not restyle it into the design
+   system, and do not pass product components as its `children` (they render unstyled
+   in there); use the exported `Row`, `Pill` and `Select`. A panel drawn in the
+   product's language becomes part of the screenshot and part of the critique.
 4. **Derived, not stored.** If a value follows from another (`hasTraffic` from the
    journey), derive it. A fourth independent switch is a fourth way to lie.
 5. **Version the `storageKey` when a field changes meaning.** Every browser that opened

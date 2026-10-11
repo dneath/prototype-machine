@@ -16,7 +16,6 @@ export const scenario = defineMachine({
        request that arrived on a key which was never issued. */
     journey: {
       label: "Get connected",
-      description: "Each rung writes step, key and first request together.",
       initial: "firstRun",
       states: {
         parked: {
@@ -65,7 +64,6 @@ export const scenario = defineMachine({
     data: {
       label: "Data state",
       group: "Viewing as",
-      description: "Forced regardless of what the mock API returns.",
       initial: "real",
       param: "state",
       states: {
@@ -136,13 +134,47 @@ export const scenario = defineMachine({
       type: "enum",
       label: "Density",
       group: "Look",
-      description: "Mirrored onto <html> as data-density.",
       default: "comfortable",
       options: ["comfortable", "compact"],
       /* Mirrored onto <html> so plain CSS can read it. */
       dom: { attribute: "data-density" },
     },
     seats: { type: "number", label: "Seats", group: "Look", default: 12, min: 0, max: 500 },
+
+    /* STRESS. One-click worst cases for the card on the overview: the stress
+       sets are built in, so a 2,000-character name or an Arabic one is a
+       click rather than something to remember to paste. */
+    projectName: {
+      type: "string",
+      label: "Project name",
+      group: "Stress",
+      default: "Acme gateway",
+      presets: "stress",
+    },
+    unread: { type: "number", label: "Unread", group: "Stress", default: 3, min: 0, presets: "stress" },
+    region: {
+      type: "enum",
+      label: "Region",
+      group: "Stress",
+      default: "us-east-1",
+      options: [
+        "us-east-1", "us-east-2", "us-west-1", "us-west-2", "ca-central-1", "eu-west-1", "eu-west-2",
+        "eu-central-1", "eu-north-1", "ap-south-1", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1",
+        "sa-east-1", "me-south-1", "af-south-1",
+      ],
+    },
+    /* A HOSTILE HOST. Turns on demo.css rules that restyle every button,
+       input and select on the page, force a serif font and a light scheme,
+       transform the layout wrapper and open a modal at z-index 9999 — the
+       things a real product does that used to bleed into the panel. */
+    hostile: {
+      type: "boolean",
+      label: "Hostile host CSS",
+      group: "Stress",
+      default: false,
+      dom: { attribute: "data-hostile" },
+    },
+    modal: { type: "boolean", label: "Modal open", group: "Stress", default: false },
   },
 
   derive: {
@@ -159,7 +191,6 @@ export const scenario = defineMachine({
       id: "restart",
       label: "Restart scenario",
       title: "Clears the scenario and returns to the front door",
-      description: "Back to sign in, with defaults restored.",
       run: (api) => {
         api.reset()
         api.navigate("/signin")

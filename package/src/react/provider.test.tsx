@@ -7,6 +7,7 @@ import { sample } from "../core/machine.test"
 import { ScenarioPanel } from "./panel"
 import { ScenarioProvider, type Scenario } from "./provider"
 import { useScenario, useScenarioValue } from "./use-scenario"
+import { ui } from "./test-utils"
 
 const counted = defineMachine({
   machines: sample.config.machines,
@@ -96,13 +97,16 @@ describe("the number input", () => {
   it("does not commit 0 while the input is cleared", async () => {
     const user = userEvent.setup()
     mount(counted, <ScenarioPanel />)
-    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
+    await user.click(ui.getByRole("button", { name: /open prototype controls/i }))
     act(() => handle!.set({ seats: 5 }))
-    const input = screen.getByRole("spinbutton") as HTMLInputElement
-    await user.clear(input)
+    const input = ui.getByRole("spinbutton") as HTMLInputElement
+    fireEvent.change(input, { target: { value: "" } })
     expect(handle!.snapshot.fields.seats).toBe(5)
-    await user.type(input, "3")
+    expect(input.value).toBe("")
+    fireEvent.change(input, { target: { value: "3" } })
     expect(handle!.snapshot.fields.seats).toBe(3)
+    fireEvent.blur(input)
+    expect(input.value).toBe("3")
   })
 })
 
@@ -115,11 +119,11 @@ describe("Escape", () => {
         <ScenarioPanel />
       </>
     ))
-    await user.click(screen.getByRole("button", { name: /open prototype controls/i }))
+    await user.click(ui.getByRole("button", { name: /open prototype controls/i }))
     const host = screen.getByLabelText("host")
     host.focus()
     fireEvent.keyDown(host, { key: "Escape" })
-    expect(screen.getByRole("dialog")).toBeTruthy()
+    expect(ui.getByRole("dialog")).toBeTruthy()
   })
 })
 

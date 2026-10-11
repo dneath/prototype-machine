@@ -1,6 +1,6 @@
 # API reference
 
-**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.9.0.
+**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.10.0.
 
 For *how to model* a scenario space, read [recipes.md](recipes.md) first. This file is
 the exhaustive surface.
@@ -91,16 +91,42 @@ Every field takes the common keys below and a **required** `default`.
 | `type` | Value | Control | Extra keys |
 | --- | --- | --- | --- |
 | `boolean` | `boolean` | Two pills | `trueLabel`, `falseLabel`, `dom` |
-| `enum` | literal union of the options | Pills; a `<select>` above 6 options | `options`, `control`, `dom` |
-| `number` | `number` | Number input, or a slider | `min`, `max`, `step`, `control` |
-| `string` | `string` | Text input | `placeholder` |
-| `date` | `string \| null` | Datetime input, stored as ISO/UTC | — |
+| `enum` | literal union of the options | Pills; a dropdown above 6 options | `options`, `control`, `dom` |
+| `number` | `number` | Number input, or a slider | `min`, `max`, `step`, `control`, `presets` |
+| `string` | `string` | Text input, or a textarea | `placeholder`, `multiline`, `presets` |
+| `date` | `string \| null` | Datetime input plus a "Not set" pill, stored as ISO/UTC | `nullable` |
 
 `options` accepts `["a", "b"]` or `[{ value, label, note }]`. `control` is
 `"pills" | "select"` for enums and `"stepper" | "range"` for numbers.
 
 `dom: { attribute, target? }` mirrors the value onto `<html>` (or `"body"`) as an
-attribute, so plain CSS can read it. Removed on unmount.
+attribute, so plain CSS can read it. On unmount the attribute goes back to whatever
+the page had before — removed if it had nothing, restored if the page's own markup
+set it.
+
+### Presets
+
+`presets` puts one-click values under a string or number field. Up to six render as
+pills; more become a dropdown. A bare value labels itself; `{ label, value }` names it.
+
+```ts
+fields: {
+  title:  { type: "string", default: "Acme", presets: "stress" },
+  unread: { type: "number", default: 3, min: 0, presets: [0, 1, { label: "99+", value: 120 }] },
+}
+```
+
+`presets: "stress"` uses the built-in worst cases, exported as `STRESS_TEXT` and
+`STRESS_NUMBERS`:
+
+| Set | Values |
+| --- | --- |
+| text | Empty, whitespace only, one character, long, 2,000 characters, an unbreakable compound and URL, a long email, right-to-left Arabic, mixed-direction text, CJK, emoji with ZWJ and skin-tone sequences, diacritics, HTML markup, newlines |
+| numbers | 0, 1, -1, `0.1 + 0.2`, 99, 100, 999, 1,000, 1M, `Number.MAX_SAFE_INTEGER` — only those inside the field's `min`/`max` |
+
+A preset the field would refuse to hold (outside its range, wrong type) throws at boot.
+Use `multiline: true` with the text set, or the "Lines" preset loses its newlines to a
+single-line input.
 
 A boolean reads `1`, `0`, `true`, `false`, `on` or `off` from a URL, and writes `1` or `0`.
 
@@ -158,27 +184,105 @@ In development, two providers sharing a `storageKey` log a warning.
 | --- | --- | --- |
 | `position` | `"bottom-right" \| "bottom-left" \| "top-right" \| "top-left"` | `"bottom-right"` |
 | `title` | `string` | `"Prototype controls"` |
-| `zIndex` | `number` | `690` |
+| `zIndex` | `number` | `2147483000` |
 | `draggable` | `boolean` | `true` |
 | `inset` | `{ name: string; value: string }` | — |
 | `nonce` | `string` | — |
 | `enabled` | `boolean` | the provider's |
+| `tools` | `boolean` | `true` |
 | `children` | `ReactNode` | — |
 
 `children` renders after the rows, for anything the config cannot express — a
-theme switch bound to the host's own provider, a link to the design file.
+theme switch bound to the host's own provider, a link to the design file. It renders
+inside the panel's shadow root, where the host's stylesheets do not reach, so build it
+from the exported `Row`, `Pill` and `Select` rather than from the product's components.
+
+### Isolation
+
+The panel never takes on the look of the product it sits in. It renders through a
+portal into a shadow root on a `<prototype-machine>` element appended to `<body>`:
+
+- **No host selector reaches it.** A reset that restyles every `button` or `select`, a
+  `* { font-family }` rule, Tailwind's preflight, a dark-mode class — none of them match
+  inside the shadow root.
+- **Inheritance is cut.** `:host` resets every inherited property (font, colour,
+  letter-spacing, text-transform, direction, visibility, cursor, colour-scheme) with
+  `!important`, which beats even `!important` rules aimed at the host element from
+  outside. The panel stays left-to-right on an RTL page and 12px on a page whose root
+  font size is 20px.
+- **The host element pins itself** with an inline `!important` style, so a page rule like
+  `body > * { display: flex; transform: … }` cannot move or hide it.
+- **Its stacking is its own.** Being on `<body>` rather than inside the app means no
+  ancestor `transform` turns `position: fixed` into "fixed to that wrapper", and the
+  default `zIndex` keeps it above the product's modals and toasts — the states you most
+  need to drive while they are open. Native top-layer elements (`<dialog>.showModal()`,
+  the Popover API) still draw above it.
+- **Its events stay inside.** Keystrokes, pointer and focus events stop at the host
+  element, so a host hotkey does not fire while you type in the panel, and a modal
+  library's "click outside" does not close the dialog you are inspecting.
+- **Dropdowns are drawn by the panel**, not by the browser: a native `<select>` popup is
+  painted from the OS and the host's colour scheme, which is how a dark panel used to
+  open an unreadable light list. See [Dropdowns](#dropdowns).
+
+Where a browser cannot attach a shadow root the panel falls back to the same element
+with its stylesheet in `<head>`; every rule is still `pm-` prefixed and stated
+explicitly. Tests that query the panel should search `document.querySelector("prototype-machine").shadowRoot`.
+
+### Dropdowns
+
+An enum past six options (or with `control: "select"`), a machine past six states, and a
+long preset list render as a button that opens a listbox.
+
+- The list is `position: fixed`, so the panel's scroll box cannot clip it, and it flips
+  above the trigger when there is no room below.
+- Past ten options it grows a filter box.
+- A machine's illegal moves are listed but struck through and unchoosable, with the
+  reason as a tooltip and in the accessible name.
+- Keyboard: `↓`/`↑` open it from the trigger; inside, `↑` `↓` `Home` `End` `PageUp`
+  `PageDown` move, typing jumps to a matching label, `Enter` or `Space` chooses, `Esc`
+  closes the list without closing the panel, and `Tab` returns to the trigger.
+
+### Header
+
+| Button | Does |
+| --- | --- |
+| Copy | Copies the scenario as text — every control's value, changed ones marked with their default, then the query string that reproduces it. Paste it into a bug report or an agent's prompt. |
+| Reset | Resets the scenario, with a count of how many values are off their default. Disabled when nothing is. |
+| Pin | Keeps the panel open through clicks outside. |
+| Close | Collapses to the launcher. |
+
+A changed field also gets its own **Reset** beside its label, and the collapsed
+launcher shows a dot while anything is off its default. The header stays put while a
+long panel scrolls.
+
+### Page tools
+
+The **Page** section, at the foot of the panel, stresses the host page as a whole.
+These are states of the person looking, not of the product, so they are not part of
+the scenario config.
+
+| Tool | Values | Does |
+| --- | --- | --- |
+| Direction | Auto, LTR, RTL | Sets `dir` on `<html>`. |
+| Text size | 100%, 125%, 150%, 200% | Scales the root font size from the page's own computed value, as a browser text-size setting would. Layouts in `rem`/`em` respond; ones in `px` do not, which is the finding. |
+| Motion | Normal, Slow ×10, Paused | Slows or pauses CSS animations and Web Animations, and with Paused turns transitions off. JavaScript-driven `requestAnimationFrame` motion is out of reach. |
+
+Each tool records what the page had and puts it back when switched off or unmounted.
+Tools persist with the panel's other UI state. `tools={false}` removes the section.
 
 `inset` sets a CSS custom property on `<html>` while the controls are mounted, so the
 host can push its own corner UI clear: `{ name: "--toast-inset-bottom", value: "4.5rem" }`.
 
-`zIndex` defaults to 690 — above an app's overlays, below anything that must never be
-covered, like a mandated classification banner.
+`zIndex` defaults to 2147483000 so the controls stay reachable over the product's own
+modals. Lower it if something must never be covered, like a mandated classification
+banner.
 
-`nonce` is set on the injected `<style>` element, for pages with a strict CSP.
+`nonce` is set on the `<style>` element inside the shadow root, for pages with a strict
+CSP.
 
 The panel is non-modal: focus moves to the first control on open, and a click outside
 closes it unless it is pinned (the pin button in the header). Open, pinned and collapsed
-sections persist under `` `${storageKey}:pm-panel-ui` ``. Past eight rows a filter box
+sections and the page tools persist under `` `${storageKey}:pm-panel-ui` ``. Past eight rows a filter box
 appears. Unreachable states are `aria-disabled` and say why, to screen readers and in a
 tooltip.
 
@@ -281,14 +385,17 @@ import { defineMachine, toSearch, fromSearch, resolve } from "prototype-machine/
 
 No React import anywhere in it. Use it in tests, scripts, or a non-React adapter:
 `compile`, `defineMachine`, `isDev`, `isValidFieldValue`, `optionsOf`, `ScenarioError`,
-`sectionsOf`, `visible`, `warn`, `has`, `suggest`, `describe`, `clearStorage`,
+`sectionsOf`, `visible`, `warn`, `has`, `suggest`, `describe`, `summarize`,
+`changedCount`, `presetsOf`, `STRESS_TEXT`, `STRESS_NUMBERS`, `isDate`, `clearStorage`,
 `fromSearch`, `readStorage`, `resolve`, `toSearch`, `mergeSearch`, `diffFromDefaults`,
 `shapeOf`, `writeStorage(machine, key, snapshot)` — plus every type in the schema. The React entry additionally
 exports the snapping primitives — `snapTarget`, `cornerPosition`, `clampToViewport`,
 `useDrag` — which are pure and testable without a DOM.
 
 `describe(machine)` prints a text outline of the scenario space (states, legal moves,
-dead ends, fields, actions). `writeStorage` saves only values that differ from their
+dead ends, fields, actions). `summarize(machine, snapshot)` prints the scenario on
+screen — what the panel's Copy button writes — and `changedCount(machine, snapshot)`
+counts the values off their default. `writeStorage` saves only values that differ from their
 defaults, tagged with `shapeOf(machine)`; a stored shape that no longer matches is ignored.
 
 A compiled machine is itself usable without React. `scenario.contextOf(snapshot)` returns
@@ -308,6 +415,8 @@ Thrown at module load, by `compile`:
 - a derived name shadowing something real
 - a context key that would shadow the API
 - an enum default that is not one of its options
+- a date default that `Date` cannot read
+- a preset the field would refuse to hold, or a preset with an empty label
 - duplicate action ids
 
 Console warnings at runtime:
@@ -317,6 +426,7 @@ Console warnings at runtime:
 - `go()` to an unknown state or an illegal move, naming the legal ones
 - a URL parameter that does not name a valid state or value
 - `navigate` with no `navigate` prop
+- an action whose `run` throws (the panel stays up)
 
 The errors are worded to name the fix. They are the main way the package teaches the
 model, so do not swallow them.
@@ -330,7 +440,8 @@ anyway.
 
 | Binding | Does |
 | --- | --- |
-| `Esc` | Close the panel |
+| `Esc` | Close the open dropdown; otherwise close the panel |
+| `↓` `↑` on a dropdown | Open it |
 | `↑` `↓` `←` `→` | Nudge the panel 8px while its handle has focus |
 | `shift` + arrows | Nudge 32px |
 
