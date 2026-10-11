@@ -1,15 +1,24 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 
-import { warn } from "../core/index"
+import { changedCount, summarize, warn } from "../core/index"
 import { type PanelSection, sectionsOf } from "../core/index"
 import { type ActionApi, type ActionDef } from "../core/index"
-import { FieldRow, MachineRow } from "./controls"
-import { ChevronIcon, CloseIcon, NodesIcon, PinIcon, SearchIcon } from "./icons"
+import { FieldRow, MachineRow, Pill, Row } from "./controls"
+import { CheckIcon, ChevronIcon, CloseIcon, CopyIcon, NodesIcon, PinIcon, ResetIcon, SearchIcon } from "./icons"
 import { useDrag } from "./drag"
+import { TOP_Z_INDEX, deepActiveElement, eventWithin, useShadowLayer } from "./shadow"
+import {
+  DEFAULT_TOOLS,
+  type PageTools,
+  TEXT_SCALES,
+  sanitizeTools,
+  toolsChanged,
+  usePageTools,
+} from "./tools"
 import { useScenario } from "./use-scenario"
-import { injectStyles } from "./styles"
 
 export type PanelPosition = "bottom-right" | "bottom-left" | "top-right" | "top-left"
 
@@ -19,9 +28,9 @@ export interface ScenarioPanelProps {
   /** Heading. Default "Prototype controls". */
   title?: string
   /**
-   * Stacking order. Default 690 — high enough to clear an app's overlays, low
-   * enough to sit under anything that must never be covered (a classification
-   * banner, a cookie wall you are legally obliged to show).
+   * Stacking order of the panel's layer. Default 2147483000, above anything a
+   * product puts on the page: the controls have to stay reachable while the
+   * modal, toast or overlay they are driving is open.
    */
   zIndex?: number
   /**
@@ -39,29 +48,45 @@ export interface ScenarioPanelProps {
   nonce?: string
   /** Override the dev-only default. */
   enabled?: boolean
-  /** Rendered at the foot of the panel — a theme switch, whatever. */
+  /**
+   * The Page section: text direction, text size and motion for the whole
+   * host page. Default true.
+   */
+  tools?: boolean
+  /**
+   * Rendered at the foot of the panel. It renders inside the panel's isolated
+   * root, where the host's stylesheets do not reach — build it from the
+   * exported `Row` and `Pill` so it matches the rest of the panel.
+   */
   children?: React.ReactNode
 }
+
+/** Collapsed-state key for the Page section; cannot collide with a group name
+ *  a config could declare, since those are non-empty user strings. */
+const PAGE_GROUP = "\u0000page"
 
 /**
  * The controls.
  *
- * Mount it once, as a sibling of your app inside <ScenarioProvider>. It
- * collapses to a single button so it does not photobomb a review, and it
- * disappears entirely in production builds.
+ * Mount it once, as a sibling of your app inside <ScenarioProvider>. It renders
+ * into its own shadow root on <body>, so the product's CSS cannot restyle it
+ * and its stacking cannot bury it. It collapses to a single button so it does
+ * not photobomb a review, and it disappears entirely in production builds.
  */
 export function ScenarioPanel({
   position = "bottom-right",
   title = "Prototype controls",
-  zIndex = 690,
+  zIndex = TOP_Z_INDEX,
   draggable = true,
   inset,
   nonce,
   enabled,
+  tools: showTools = true,
   children,
 }: ScenarioPanelProps) {
   const p = useScenario()
   const active = enabled ?? p.enabled
+  const layer = useShadowLayer(active, zIndex, nonce)
 
   const panelRef = React.useRef<HTMLDivElement>(null)
   const launcherRef = React.useRef<HTMLButtonElement>(null)
@@ -73,6 +98,9 @@ export function ScenarioPanel({
   const hintId = React.useId()
   const [ui, setUi] = usePanelUi(p.storageKey, active)
   const [filter, setFilter] = React.useState("")
+  const [copied, setCopied] = React.useState(false)
+
+  usePageTools(ui.tools, active && showTools, layer?.host ?? null)
 
   /* Pinned and open survive a reload, so a reviewer comparing states is not
      sent back to a closed launcher every time the page refreshes. */
@@ -87,10 +115,6 @@ export function ScenarioPanel({
     if (!restored.current) return
     setUi((u) => (u.open === p.open ? u : { ...u, open: p.open }))
   }, [p.open, setUi])
-
-  React.useInsertionEffect(() => {
-    if (active) injectStyles(nonce)
-  }, [active, nonce])
 
   const drag = useDrag({
     storageKey: p.storageKey,
@@ -134,27 +158,30 @@ export function ScenarioPanel({
   }, [active, inset])
 
   /* Escape and click-outside, which the hand-rolled version of this panel
-     always forgets. */
+     always forgets. Both read the event's composed path: inside a shadow root
+     the document only ever sees the host element as the target. */
   const open = p.open
   const setOpen = p.setOpen
   const pinned = ui.pinned
+  const host = layer?.host ?? null
   React.useEffect(() => {
-    if (!active || !open || typeof document === "undefined") return
+    if (!active || !open || !host || typeof document === "undefined") return
 
+    /* Keys pressed inside the panel stop at its host and are handled by the
+       panel's own onKeyDown. This catches the one other case worth having:
+       nothing is focused at all. An Escape meant for the host's own dialog
+       or input is not ours to take. */
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape" || event.defaultPrevented) return
-      /* Only when the panel owns focus, or nothing does. An Escape meant for
-         the host's own dialog is not ours to take. */
-      const focused = document.activeElement
-      const inside = !!(focused && panelRef.current?.contains(focused))
-      if (!inside && focused && focused !== document.body) return
+      const focused = deepActiveElement()
+      if (focused && focused !== document.body && !host!.contains(focused) && focused !== host) return
       event.preventDefault()
       restoreFocus.current = true
       setOpen(false)
     }
     function onPointerDown(event: PointerEvent) {
-      if (pinned || !panelRef.current) return
-      if (event.target instanceof Node && panelRef.current.contains(event.target)) return
+      if (pinned) return
+      if (eventWithin(event, host)) return
       setOpen(false)
     }
 
@@ -164,7 +191,7 @@ export function ScenarioPanel({
       document.removeEventListener("keydown", onKeyDown)
       document.removeEventListener("pointerdown", onPointerDown, true)
     }
-  }, [active, open, setOpen, pinned])
+  }, [active, open, setOpen, pinned, host])
 
   /* Non-modal: focus moves in so the keyboard can reach the controls, but
      nothing is trapped — the prototype beside it stays usable. */
@@ -175,10 +202,10 @@ export function ScenarioPanel({
     const panel = panelRef.current
     if (!panel) return
     const first = panel.querySelector<HTMLElement>(
-      ".pm-rows button, .pm-rows input, .pm-rows select, .pm-filter input",
+      ".pm-filter input, .pm-rows button, .pm-rows input, .pm-rows textarea",
     )
     ;(first ?? panel).focus()
-  }, [p.open])
+  }, [p.open, layer])
 
   React.useEffect(() => {
     if (p.open || !restoreFocus.current) return
@@ -186,27 +213,39 @@ export function ScenarioPanel({
     launcherRef.current?.focus()
   }, [p.open])
 
+  React.useEffect(() => {
+    if (!copied) return
+    const id = window.setTimeout(() => setCopied(false), 1600)
+    return () => window.clearTimeout(id)
+  }, [copied])
+
   /* Production builds drop it entirely. A prototype gets deployed for review,
-     and a reviewer who finds a role switcher assumes it is a feature. */
-  if (!active) return null
+     and a reviewer who finds a role switcher assumes it is a feature. Nothing
+     renders on the server or before the layer exists, so hydration never
+     sees panel markup it has to match. */
+  if (!active || !layer) return null
+
+  const changed = changedCount(p.machine, p.snapshot)
+  const pageChanged = showTools ? toolsChanged(ui.tools) : 0
 
   if (!p.open) {
-    return (
+    return createPortal(
       <>
         <button
           ref={launcherRef}
           type="button"
           className={`pm-root${corner} pm-launcher${dragClass}`}
-          style={{ zIndex, ...offset }}
+          style={{ zIndex: 1, ...offset }}
           onClick={() => {
             focusOnOpen.current = true
             p.setOpen(true)
           }}
-          aria-label={`Open ${title.toLowerCase()}`}
+          aria-label={`Open ${title.toLowerCase()}${changed + pageChanged ? `, ${changed + pageChanged} changed` : ""}`}
           aria-describedby={draggable ? hintId : undefined}
           {...(draggable ? drag.handleProps : {})}
         >
           <NodesIcon size={20} />
+          {changed + pageChanged ? <span className="pm-launcher-dot" aria-hidden="true" /> : null}
         </button>
         {draggable ? (
           <span id={hintId} className="pm-root pm-sr">
@@ -217,10 +256,11 @@ export function ScenarioPanel({
           <div
             aria-hidden="true"
             className={`pm-root pm-${drag.snapPreview} pm-snap-preview pm-snap-launcher`}
-            style={{ zIndex: zIndex - 1 }}
+            style={{ zIndex: 0 }}
           />
         ) : null}
-      </>
+      </>,
+      layer.mount,
     )
   }
 
@@ -251,6 +291,13 @@ export function ScenarioPanel({
     get: () => p.machine.contextOf(p.snapshot),
   }
 
+  const toggleGroup = (g: string) =>
+    setUi((u) => ({
+      ...u,
+      collapsed: u.collapsed.includes(g) ? u.collapsed.filter((x) => x !== g) : [...u.collapsed, g],
+    }))
+  const setTools = (patch: Partial<PageTools>) => setUi((u) => ({ ...u, tools: { ...u.tools, ...patch } }))
+
   const rowsOf = (section: PanelSection) => (
     <>
       {section.machines.map(([id, def]) => (
@@ -271,7 +318,13 @@ export function ScenarioPanel({
             type="button"
             className="pm-action"
             title={action.title}
-            onClick={() => action.run(actionApi)}
+            onClick={() => {
+              try {
+                action.run(actionApi)
+              } catch (error) {
+                warn(`action "${action.id}" threw: ${String(error)}`)
+              }
+            }}
           >
             {action.label}
           </button>
@@ -279,20 +332,58 @@ export function ScenarioPanel({
       </div>
     ) : null
 
-  return (
+  const copy = () => {
+    const page = ui.tools
+    const extra =
+      showTools && toolsChanged(page)
+        ? `\nPage: direction ${page.dir}, text ${Math.round(page.text * 100)}%, motion ${page.motion}`
+        : ""
+    void copyText(summarize(p.machine, p.snapshot) + extra, layer.host).then((ok) => {
+      if (ok) setCopied(true)
+    })
+  }
+
+  return createPortal(
     <>
     <div
       ref={panelRef}
       className={`pm-root${corner} pm-panel${dragClass}`}
-      style={{ zIndex, ...offset }}
+      style={{ zIndex: 1, ...offset }}
       role="dialog"
       aria-label={title}
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || event.defaultPrevented) return
+        event.preventDefault()
+        restoreFocus.current = true
+        setOpen(false)
+      }}
     >
       {/* The header is the drag handle; its buttons are excluded by the
           handle's own target test. Double-click returns it to its corner. */}
       <div className="pm-head" {...(draggable ? drag.handleProps : {})}>
         <span className="pm-title">{title}</span>
         <div className="pm-head-actions">
+          <button
+            type="button"
+            className="pm-icon-button"
+            aria-label={copied ? "Copied the scenario" : "Copy the scenario as text"}
+            title={copied ? "Copied" : "Copy scenario"}
+            onClick={copy}
+          >
+            {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+          </button>
+          <button
+            type="button"
+            className="pm-icon-button"
+            disabled={!changed}
+            aria-label={changed ? `Reset the scenario, ${changed} changed` : "Reset the scenario (nothing changed)"}
+            title={changed ? `Reset ${changed} changed` : "Nothing to reset"}
+            onClick={() => p.reset()}
+          >
+            <ResetIcon size={14} />
+            {changed ? <span className="pm-count" aria-hidden="true">{changed}</span> : null}
+          </button>
           <button
             type="button"
             className="pm-icon-button"
@@ -316,6 +407,9 @@ export function ScenarioPanel({
           </button>
         </div>
       </div>
+      <span className="pm-sr" role="status" aria-live="polite">
+        {copied ? "Scenario copied" : ""}
+      </span>
 
       {filtering ? (
         <label className="pm-filter">
@@ -325,6 +419,8 @@ export function ScenarioPanel({
             value={filter}
             placeholder="Filter"
             aria-label="Filter controls"
+            autoComplete="off"
+            spellCheck={false}
             onChange={(e) => setFilter(e.target.value)}
           />
         </label>
@@ -342,17 +438,7 @@ export function ScenarioPanel({
             key={section.group}
             group={section.group as string}
             collapsed={!query && ui.collapsed.includes(section.group as string)}
-            onToggle={() =>
-              setUi((u) => {
-                const g = section.group as string
-                return {
-                  ...u,
-                  collapsed: u.collapsed.includes(g)
-                    ? u.collapsed.filter((x) => x !== g)
-                    : [...u.collapsed, g],
-                }
-              })
-            }
+            onToggle={() => toggleGroup(section.group as string)}
           >
             {rowsOf(section)}
             {actionsOf(section.actions)}
@@ -364,6 +450,66 @@ export function ScenarioPanel({
         {children}
 
         {ungrouped ? actionsOf(ungrouped.actions) : null}
+
+        {showTools && !query ? (
+          <PanelGroup
+            group="Page"
+            collapsed={ui.collapsed.includes(PAGE_GROUP)}
+            onToggle={() => toggleGroup(PAGE_GROUP)}
+          >
+            <Row
+              label="Direction"
+              onReset={ui.tools.dir !== DEFAULT_TOOLS.dir ? () => setTools({ dir: DEFAULT_TOOLS.dir }) : undefined}
+            >
+              <Pill active={ui.tools.dir === "auto"} title="Whatever the page sets" onClick={() => setTools({ dir: "auto" })}>
+                Auto
+              </Pill>
+              <Pill active={ui.tools.dir === "ltr"} onClick={() => setTools({ dir: "ltr" })}>
+                LTR
+              </Pill>
+              <Pill active={ui.tools.dir === "rtl"} title="Sets dir=rtl on <html>" onClick={() => setTools({ dir: "rtl" })}>
+                RTL
+              </Pill>
+            </Row>
+            <Row
+              label="Text size"
+              onReset={ui.tools.text !== DEFAULT_TOOLS.text ? () => setTools({ text: DEFAULT_TOOLS.text }) : undefined}
+            >
+              {TEXT_SCALES.map((scale) => (
+                <Pill
+                  key={scale}
+                  active={ui.tools.text === scale}
+                  title="Scales the root font size, as a browser text-size setting would"
+                  onClick={() => setTools({ text: scale })}
+                >
+                  {`${Math.round(scale * 100)}%`}
+                </Pill>
+              ))}
+            </Row>
+            <Row
+              label="Motion"
+              onReset={ui.tools.motion !== DEFAULT_TOOLS.motion ? () => setTools({ motion: DEFAULT_TOOLS.motion }) : undefined}
+            >
+              <Pill active={ui.tools.motion === "normal"} onClick={() => setTools({ motion: "normal" })}>
+                Normal
+              </Pill>
+              <Pill
+                active={ui.tools.motion === "slow"}
+                title="CSS and Web Animations at a tenth of their speed"
+                onClick={() => setTools({ motion: "slow" })}
+              >
+                Slow ×10
+              </Pill>
+              <Pill
+                active={ui.tools.motion === "paused"}
+                title="Pauses CSS animations and Web Animations, and turns transitions off"
+                onClick={() => setTools({ motion: "paused" })}
+              >
+                Paused
+              </Pill>
+            </Row>
+          </PanelGroup>
+        ) : null}
       </div>
       </PanelBoundary>
     </div>
@@ -371,11 +517,43 @@ export function ScenarioPanel({
       <div
         aria-hidden="true"
         className={`pm-root pm-${drag.snapPreview} pm-snap-preview pm-snap-panel`}
-        style={{ zIndex: zIndex - 1 }}
+        style={{ zIndex: 0 }}
       />
     ) : null}
-    </>
+    </>,
+    layer.mount,
   )
+}
+
+/* The clipboard API where the page is allowed it; a hidden textarea and
+   execCommand where it is not (an http:// review build, an iframe without the
+   clipboard permission). The textarea goes in <body>, not the shadow root,
+   because a selection inside a shadow root is not reliably copyable. */
+async function copyText(text: string, returnFocusTo: HTMLElement): Promise<boolean> {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    /* Fall through to the old way. */
+  }
+  try {
+    const area = document.createElement("textarea")
+    area.value = text
+    area.setAttribute("readonly", "")
+    area.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none"
+    document.body.appendChild(area)
+    const before = deepActiveElement()
+    area.select()
+    const ok = typeof document.execCommand === "function" && document.execCommand("copy")
+    area.remove()
+    if (before instanceof HTMLElement) before.focus()
+    else returnFocusTo.focus()
+    return ok
+  } catch {
+    return false
+  }
 }
 
 /* A control that throws while rendering takes down the panel, not the
@@ -447,9 +625,10 @@ interface PanelUi {
   open: boolean
   pinned: boolean
   collapsed: string[]
+  tools: PageTools
 }
 
-const EMPTY_UI: PanelUi = { loaded: false, open: false, pinned: false, collapsed: [] }
+const EMPTY_UI: PanelUi = { loaded: false, open: false, pinned: false, collapsed: [], tools: DEFAULT_TOOLS }
 
 function uiKey(storageKey: string) {
   return `${storageKey}:pm-panel-ui`
@@ -474,6 +653,7 @@ function usePanelUi(
           collapsed: Array.isArray(parsed.collapsed)
             ? parsed.collapsed.filter((g): g is string => typeof g === "string")
             : [],
+          tools: sanitizeTools(parsed.tools),
         }
       }
     } catch {
@@ -490,8 +670,8 @@ function usePanelUi(
   React.useEffect(() => {
     if (!ui.loaded) return
     try {
-      const { open, pinned, collapsed } = ui
-      window.localStorage.setItem(uiKey(storageKey), JSON.stringify({ open, pinned, collapsed }))
+      const { open, pinned, collapsed, tools } = ui
+      window.localStorage.setItem(uiKey(storageKey), JSON.stringify({ open, pinned, collapsed, tools }))
     } catch {
       /* Not worth failing a prototype over. */
     }

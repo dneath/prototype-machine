@@ -42,3 +42,24 @@ describe("types", () => {
     expectTypeOf<Parameters<TypedMoves<M, F>["set"]>[0]>().toEqualTypeOf<Partial<{ seats: number }>>()
   })
 })
+
+import { changedCount, summarize } from "./index"
+
+describe("summarize()", () => {
+  it("lists every control, marks what changed, and ends with the query", () => {
+    const snap = { machines: { journey: "second" }, fields: { seats: 3 } }
+    const text = summarize(m, snap)
+    expect(text).toContain("Journey: second — Second  (default first)")
+    expect(text).toContain("Seats: 3  (default 1)")
+    expect(text).toContain("Query: ?journey=second&seats=3")
+    expect(changedCount(m, snap)).toBe(2)
+  })
+  it("says so when everything is at its default", () => {
+    expect(summarize(m, m.initial())).toContain("Query: (all defaults)")
+    expect(changedCount(m, m.initial())).toBe(0)
+  })
+  it("falls back to the id when a machine has no label", () => {
+    const bare = defineMachine({ machines: { data: { initial: "a", states: { a: {}, b: {} } } } })
+    expect(outline(bare)).toContain("data (data), starts at a")
+  })
+})

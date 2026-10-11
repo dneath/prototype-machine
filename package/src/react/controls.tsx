@@ -2,24 +2,46 @@
 
 import * as React from "react"
 
-import { optionsOf } from "../core/index"
-import { SELECT_THRESHOLD, type AnyField, type MachineDef } from "../core/index"
+import { optionsOf, presetsOf, type LabelledPreset } from "../core/index"
+import { SELECT_THRESHOLD, type AnyField, type MachineDef, type Primitive } from "../core/index"
 import { type Scenario } from "./provider"
+import { Select } from "./select"
 
+/* Past this many presets a row of pills costs more space than it saves, and
+   the presets become a dropdown instead. */
+const PRESET_PILLS = 6
+
+/**
+ * A labelled control. `onReset`, when given, draws a small way back to the
+ * default beside the label — only while the value differs from it, so the
+ * presence of the button is itself the "changed" signal.
+ */
 export function Row({
   label,
   children,
+  onReset,
+  layout = "pills",
 }: {
   label: string
   children: React.ReactNode
+  onReset?: () => void
+  /** Pills wrap in a row; a stack gives each child the full width. */
+  layout?: "pills" | "stack"
 }) {
   const id = React.useId()
   return (
     <div className="pm-row">
-      <span className="pm-label" id={id}>
-        {label}
-      </span>
-      <div className="pm-options" role="group" aria-labelledby={id}>
+      <div className="pm-row-head">
+        <span className="pm-label" id={id} title={label}>
+          {label}
+        </span>
+        {onReset ? (
+          <button type="button" className="pm-reset" onClick={onReset} aria-label={`Reset ${label} to its default`} title="Back to the default">
+            Reset
+          </button>
+        ) : null}
+      </div>
+      <div className={layout === "stack" ? "pm-stack" : "pm-options"} role="group" aria-labelledby={id}>
         {children}
       </div>
     </div>
@@ -74,7 +96,7 @@ export function Pill({
 }
 
 /**
- * A machine's states, as pills.
+ * A machine's states, as pills — or as a dropdown past `SELECT_THRESHOLD`.
  *
  * An illegal move renders present but disabled rather than hidden. The shape of
  * the journey is part of what the panel is showing — a reviewer needs to see
@@ -98,48 +120,78 @@ export function MachineRow({
         .map((s) => def.states[s]?.label ?? s)
         .join(", ")}.`
     : `Not reachable from ${here}, which has no moves out.`
+  const label = def.label ?? id
 
-  const body =
-    entries.length > SELECT_THRESHOLD ? (
-      <select
-        className="pm-select"
-        value={current}
-        onChange={(e) => scenario.go(id, e.target.value)}
-        aria-label={def.label ?? id}
-      >
-        {entries.map(([stateId, state]) => (
-          <option
-            key={stateId}
-            value={stateId}
-            disabled={!scenario.can(id, stateId)}
-            title={scenario.can(id, stateId) ? state.note : reason}
-          >
-            {state.label ?? stateId}
-          </option>
-        ))}
-      </select>
-    ) : (
-      entries.map(([stateId, state]) => {
-        const legal = scenario.can(id, stateId)
-        return (
-          <Pill
-            key={stateId}
-            active={current === stateId}
-            disabled={!legal}
-            title={state.note}
-            reason={reason}
-            onClick={() => scenario.go(id, stateId)}
-          >
-            {state.label ?? stateId}
-          </Pill>
-        )
-      })
+  if (entries.length > SELECT_THRESHOLD) {
+    return (
+      <Row label={label} layout="stack">
+        <Select
+          label={label}
+          value={current}
+          onChange={(next) => scenario.go(id, next)}
+          options={entries.map(([stateId, state]) => ({
+            value: stateId,
+            label: state.label ?? stateId,
+            note: state.note,
+            disabled: !scenario.can(id, stateId),
+            reason,
+          }))}
+        />
+      </Row>
     )
+  }
 
   return (
-    <Row label={def.label ?? id}>
-      {body}
+    <Row label={label}>
+      {entries.map(([stateId, state]) => (
+        <Pill
+          key={stateId}
+          active={current === stateId}
+          disabled={!scenario.can(id, stateId)}
+          title={state.note}
+          reason={reason}
+          onClick={() => scenario.go(id, stateId)}
+        >
+          {state.label ?? stateId}
+        </Pill>
+      ))}
     </Row>
+  )
+}
+
+/** One-click values for a string or number field. */
+function Presets<T extends string | number>({
+  label,
+  presets,
+  value,
+  onPick,
+}: {
+  label: string
+  presets: ReadonlyArray<LabelledPreset<T>>
+  value: Primitive
+  onPick: (value: T) => void
+}) {
+  if (!presets.length) return null
+  if (presets.length > PRESET_PILLS) {
+    const index = presets.findIndex((p) => p.value === value)
+    return (
+      <Select
+        label={`${label} presets`}
+        placeholder="Presets…"
+        value={index >= 0 ? String(index) : ""}
+        onChange={(i) => onPick(presets[Number(i)].value)}
+        options={presets.map((p, i) => ({ value: String(i), label: p.label }))}
+      />
+    )
+  }
+  return (
+    <div className="pm-options pm-presets" role="group" aria-label={`${label} presets`}>
+      {presets.map((p) => (
+        <Pill key={`${p.label}:${String(p.value)}`} active={p.value === value} onClick={() => onPick(p.value)}>
+          {p.label}
+        </Pill>
+      ))}
+    </div>
   )
 }
 
@@ -155,15 +207,17 @@ export function FieldRow({
 }) {
   const label = def.label ?? id
   const value = scenario.snapshot.fields[id] ?? def.default
+  const set = (next: Primitive) => scenario.set({ [id]: next })
+  const onReset = value !== def.default ? () => set(def.default) : undefined
 
   switch (def.type) {
     case "boolean":
       return (
-        <Row label={label}>
-          <Pill active={value === true} onClick={() => scenario.set({ [id]: true })}>
+        <Row label={label} onReset={onReset}>
+          <Pill active={value === true} onClick={() => set(true)}>
             {def.trueLabel ?? "On"}
           </Pill>
-          <Pill active={value === false} onClick={() => scenario.set({ [id]: false })}>
+          <Pill active={value === false} onClick={() => set(false)}>
             {def.falseLabel ?? "Off"}
           </Pill>
         </Row>
@@ -173,31 +227,20 @@ export function FieldRow({
       const options = optionsOf(def)
       if (def.control === "select" || (def.control !== "pills" && options.length > SELECT_THRESHOLD)) {
         return (
-          <Row label={label}>
-            <select
-              className="pm-select"
+          <Row label={label} onReset={onReset} layout="stack">
+            <Select
+              label={label}
               value={String(value)}
-              onChange={(e) => scenario.set({ [id]: e.target.value })}
-              aria-label={label}
-            >
-              {options.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label ?? o.value}
-                </option>
-              ))}
-            </select>
+              onChange={(next) => set(next)}
+              options={options.map((o) => ({ value: o.value, label: o.label ?? o.value, note: o.note }))}
+            />
           </Row>
         )
       }
       return (
-        <Row label={label}>
+        <Row label={label} onReset={onReset}>
           {options.map((o) => (
-            <Pill
-              key={o.value}
-              active={value === o.value}
-              title={o.note}
-              onClick={() => scenario.set({ [id]: o.value })}
-            >
+            <Pill key={o.value} active={value === o.value} title={o.note} onClick={() => set(o.value)}>
               {o.label ?? o.value}
             </Pill>
           ))}
@@ -207,70 +250,94 @@ export function FieldRow({
 
     case "number": {
       const n = typeof value === "number" ? value : def.default
-      if (def.control === "range") {
-        return (
-          <Row label={label}>
-            <div className="pm-number-row">
-              <input
-                className="pm-range"
-                type="range"
-                min={def.min}
-                max={def.max}
-                step={def.step ?? 1}
-                value={n}
-                onChange={(e) => scenario.set({ [id]: Number(e.target.value) })}
-                aria-label={label}
-                aria-valuetext={String(n)}
-              />
-              <span className="pm-number-value" aria-hidden="true">
-                {n}
-              </span>
-            </div>
-          </Row>
-        )
-      }
-      return (
-        <Row label={label}>
+      const input =
+        def.control === "range" ? (
+          <div className="pm-number-row">
+            <input
+              className="pm-range"
+              type="range"
+              min={def.min}
+              max={def.max}
+              step={def.step ?? 1}
+              value={n}
+              onChange={(e) => set(Number(e.target.value))}
+              aria-label={label}
+              aria-valuetext={String(n)}
+            />
+            <span className="pm-number-value" aria-hidden="true">
+              {n}
+            </span>
+          </div>
+        ) : (
           <NumberInput
             value={n}
             min={def.min}
             max={def.max}
             step={def.step ?? 1}
             label={label}
-            onCommit={(next) => scenario.set({ [id]: next })}
+            onCommit={set}
           />
+        )
+      return (
+        <Row label={label} onReset={onReset} layout="stack">
+          {input}
+          <Presets label={label} presets={presetsOf(def)} value={n} onPick={set} />
         </Row>
       )
     }
 
-    case "string":
+    case "string": {
+      const text = String(value ?? "")
       return (
-        <Row label={label}>
-          <input
-            className="pm-text"
-            type="text"
-            value={String(value ?? "")}
-            placeholder={def.placeholder}
-            onChange={(e) => scenario.set({ [id]: e.target.value })}
-            aria-label={label}
-          />
+        <Row label={label} onReset={onReset} layout="stack">
+          {def.multiline ? (
+            <textarea
+              className="pm-textarea"
+              value={text}
+              rows={3}
+              placeholder={def.placeholder}
+              onChange={(e) => set(e.target.value)}
+              aria-label={label}
+              spellCheck={false}
+            />
+          ) : (
+            <input
+              className="pm-text"
+              type="text"
+              value={text}
+              placeholder={def.placeholder}
+              onChange={(e) => set(e.target.value)}
+              aria-label={label}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          )}
+          <Presets label={label} presets={presetsOf(def)} value={text} onPick={set} />
         </Row>
       )
+    }
 
     case "date":
       return (
-        <Row label={label}>
-          <input
-            className="pm-text"
-            type="datetime-local"
-            value={toLocalInput(value)}
-            onChange={(e) =>
-              scenario.set({
-                [id]: e.target.value ? new Date(e.target.value).toISOString() : null,
-              })
-            }
-            aria-label={label}
-          />
+        <Row label={label} onReset={onReset} layout="stack">
+          <div className="pm-date-row">
+            <input
+              className="pm-text"
+              type="datetime-local"
+              value={toLocalInput(value)}
+              onChange={(e) => {
+                if (!e.target.value) return set(null)
+                const date = new Date(e.target.value)
+                if (!Number.isNaN(date.getTime())) set(date.toISOString())
+              }}
+              aria-label={label}
+            />
+            {def.nullable === false ? null : (
+              <Pill active={value === null} onClick={() => set(null)} title="Writes null: has not happened yet">
+                Not set
+              </Pill>
+            )}
+          </div>
         </Row>
       )
   }
@@ -309,6 +376,7 @@ function NumberInput({
     <input
       className="pm-number"
       type="number"
+      inputMode="decimal"
       min={min}
       max={max}
       step={step}
@@ -325,6 +393,12 @@ function NumberInput({
       }}
       onBlur={() => setDraft(null)}
       aria-label={label}
+      aria-invalid={draft !== null && draft.trim() !== "" && !isInRange(draft, min, max) ? true : undefined}
     />
   )
+}
+
+function isInRange(raw: string, min?: number, max?: number): boolean {
+  const n = Number(raw)
+  return Number.isFinite(n) && (min === undefined || n >= min) && (max === undefined || n <= max)
 }

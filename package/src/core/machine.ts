@@ -272,6 +272,30 @@ export function compile(config: {
         )
       }
     }
+    if (def.type === "date" && def.default !== null && !isDate(def.default)) {
+      throw new ScenarioError(
+        `Field "${fieldId}" defaults to "${def.default}", which is not a date. Use an ISO 8601 string, or null for "not yet".`
+      )
+    }
+    if ((def.type === "string" || def.type === "number") && def.presets !== undefined && def.presets !== "stress") {
+      if (!Array.isArray(def.presets)) {
+        throw new ScenarioError(`Field "${fieldId}" has presets that are neither a list nor "stress".`)
+      }
+      for (const preset of def.presets as ReadonlyArray<unknown>) {
+        const value = typeof preset === "object" && preset !== null ? (preset as { value: unknown }).value : preset
+        const name = typeof preset === "object" && preset !== null ? (preset as { label?: unknown }).label : undefined
+        if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
+          throw new ScenarioError(`Field "${fieldId}" has a preset with an empty label.`)
+        }
+        if (!isValidFieldValue(def, value)) {
+          throw new ScenarioError(
+            `Field "${fieldId}" offers the preset ${JSON.stringify(value)}, which it would refuse to hold${
+              def.type === "number" ? ` (expected a number from ${def.min ?? "-∞"} to ${def.max ?? "∞"})` : ""
+            }.`
+          )
+        }
+      }
+    }
     checkLabel(`Field "${fieldId}"`, def)
     const key = paramKeyFor(fieldId, def)
     if (has(params, key)) {
@@ -408,8 +432,13 @@ export function isValidFieldValue(def: AnyField, value: unknown): value is Primi
     case "string":
       return typeof value === "string"
     case "date":
-      return value === null || typeof value === "string"
+      return value === null || (typeof value === "string" && isDate(value))
   }
+}
+
+/** A string `Date` can read. Garbage from a URL or old storage is not one. */
+export function isDate(value: string): boolean {
+  return value.trim() !== "" && !Number.isNaN(Date.parse(value))
 }
 
 export function optionsOf(def: { options: ReadonlyArray<string | { value: string; label?: string; note?: string }> }) {

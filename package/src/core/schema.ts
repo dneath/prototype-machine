@@ -76,6 +76,9 @@ export interface EnumField extends Common {
   dom?: DomBinding
 }
 
+/** A one-click value under a control. A bare value labels itself. */
+export type Preset<T> = T | { label: string; value: T }
+
 export interface NumberField extends Common {
   type: "number"
   default: number
@@ -83,18 +86,34 @@ export interface NumberField extends Common {
   max?: number
   step?: number
   control?: "stepper" | "range"
+  /**
+   * One-click values beside the input — the 0, 1 and 99+ a layout has to
+   * survive. `"stress"` uses the built-in edge cases (`STRESS_NUMBERS`),
+   * keeping only those inside `min`/`max`.
+   */
+  presets?: ReadonlyArray<Preset<number>> | "stress"
 }
 
 export interface StringField extends Common {
   type: "string"
   default: string
   placeholder?: string
+  /** A textarea instead of a single line, so newlines survive. */
+  multiline?: boolean
+  /**
+   * One-click values under the input. `"stress"` uses the built-in edge cases
+   * (`STRESS_TEXT`): empty, whitespace, very long, unbreakable, right-to-left,
+   * mixed direction, CJK, emoji sequences, diacritics, markup and newlines.
+   */
+  presets?: ReadonlyArray<Preset<string>> | "stress"
 }
 
 export interface DateField extends Common {
   type: "date"
   /** ISO 8601, or null for "has not happened yet". */
   default: string | null
+  /** Offer a "Not set" pill that writes null. Default true. */
+  nullable?: boolean
 }
 
 export type AnyField =

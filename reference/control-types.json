@@ -1,6 +1,6 @@
 {
-  "$comment": "Machine-readable catalogue for prototype-machine 0.9.0. Human docs: ./api.md",
-  "version": "0.9.0",
+  "$comment": "Machine-readable catalogue for prototype-machine 0.10.0. Human docs: ./api.md",
+  "version": "0.10.0",
   "kinds": {
     "machine": {
       "description": "A journey. One state is current; each state writes a whole tuple of context via `assign`. Use when moving one value alone would produce a state the product cannot be in.",
@@ -89,7 +89,7 @@
     },
     "enum": {
       "value": "literal union of the option values",
-      "control": "Pills, or a <select> once there are more than 6 options",
+      "control": "Pills, or a panel-drawn dropdown (listbox, filter past 10 options) once there are more than 6 options",
       "keys": {
         "options": "Array<string | {value, label?, note?}>",
         "control": "'pills' | 'select'",
@@ -106,26 +106,32 @@
         "min": "number",
         "max": "number",
         "step": "number",
-        "control": "'stepper' | 'range'"
+        "control": "'stepper' | 'range'",
+        "presets": "Array<number | {label, value}> | 'stress'  — one-click values; 'stress' keeps STRESS_NUMBERS inside min/max"
       },
       "example": "seats: { type: 'number', label: 'Seats', default: 12, min: 0, max: 500 }",
       "urlEncoding": "decimal string; values outside min/max are dropped"
     },
     "string": {
       "value": "string",
-      "control": "Text input",
+      "control": "Text input, or a textarea with multiline: true",
       "keys": {
-        "placeholder": "string"
+        "placeholder": "string",
+        "multiline": "boolean",
+        "presets": "Array<string | {label, value}> | 'stress'  — one-click values; 'stress' is STRESS_TEXT (empty, long, unbreakable, RTL, CJK, emoji, markup, newlines…)"
       },
       "example": "chosenTool: { type: 'string', default: 'opencode', hidden: true }",
       "urlEncoding": "verbatim"
     },
     "date": {
       "value": "string | null",
-      "control": "datetime-local input; stored as an ISO string in UTC",
-      "keys": {},
+      "control": "datetime-local input plus a 'Not set' pill; stored as an ISO string in UTC",
+      "keys": {
+        "nullable": "boolean (default true) — offer the 'Not set' pill"
+      },
       "example": "expiresAt: { type: 'date', label: 'Expires', default: null }",
-      "urlEncoding": "ISO string, or empty for null"
+      "urlEncoding": "ISO string, or empty for null",
+      "validation": "`default` must be null or a string Date can read, or compile throws."
     }
   },
   "derive": {
@@ -178,9 +184,10 @@
   ],
   "opensOnly": "a click on the launcher button; there is no keyboard shortcut that opens the panel, and no prop to bind one",
   "keyboard": {
-    "Escape": "close the panel",
+    "Escape": "close the open dropdown; otherwise close the panel",
     "arrows": "nudge the panel while its handle has focus; shift for a bigger step",
-    "drag near a corner": "snap the panel to it (within 140px)"
+    "drag near a corner": "snap the panel to it (within 140px)",
+    "dropdown": "ArrowDown/ArrowUp open it; inside: arrows, Home/End, PageUp/PageDown, type-to-jump, Enter/Space choose, Tab back to the trigger"
   },
   "sections": {
     "description": "Any machine, field or action may carry `group`. Controls sharing a group render under one collapsible title. A section is a title plus its controls; never explanatory subtext.",
@@ -191,5 +198,35 @@
       "ungrouped actions at the foot, after children"
     ],
     "coreHelper": "sectionsOf(machine.config, env) => PanelSection[]  ({ group: string | null, machines, fields, actions })"
+  },
+  "panel": {
+    "isolation": "Renders into a shadow root on a <prototype-machine> element on <body>. Host CSS cannot reach it; :host resets inherited properties with !important; events stop at the host element.",
+    "zIndexDefault": 2147483000,
+    "header": [
+      "copy scenario as text",
+      "reset scenario (with changed count)",
+      "pin",
+      "close"
+    ],
+    "perFieldReset": "A changed field shows a Reset beside its label.",
+    "pageTools": {
+      "prop": "tools (default true)",
+      "direction": [
+        "auto",
+        "ltr",
+        "rtl"
+      ],
+      "textSize": [
+        1,
+        1.25,
+        1.5,
+        2
+      ],
+      "motion": [
+        "normal",
+        "slow",
+        "paused"
+      ]
+    }
   }
 }

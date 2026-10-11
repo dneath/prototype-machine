@@ -50,3 +50,38 @@ pre {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.card {
+  max-width: 280px;
+  padding: var(--pad);
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+}
+.card h2 { margin: 0 0 4px; font-size: 18px; overflow-wrap: anywhere; }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+.sheet { max-width: 360px; padding: 24px; border-radius: 12px; background: #fff; color: #111; }
+
+/* The hostile host. Everything here is something a real product's global
+   stylesheet has done; none of it may reach the panel. */
+[data-hostile="true"] { color-scheme: light; font-size: 20px; letter-spacing: 0.1em; }
+[data-hostile="true"] body { background: #fff7d6; color: #5a3b00; }
+[data-hostile="true"] * { font-family: Georgia, serif !important; text-transform: uppercase; line-height: 2.2; }
+[data-hostile="true"] button, [data-hostile="true"] input, [data-hostile="true"] select {
+  all: unset;
+  background: #ffe066 !important;
+  color: #000 !important;
+  border: 3px solid hotpink !important;
+  padding: 12px !important;
+}
+[data-hostile="true"] select option { background: #fff !important; color: #ccc !important; }
+[data-hostile="true"] div { box-sizing: content-box; }
+[data-hostile="true"] #root { transform: translateZ(0) rotate(0.5deg); }
+[data-hostile="true"] body > * { position: relative; z-index: 1; display: flex; }

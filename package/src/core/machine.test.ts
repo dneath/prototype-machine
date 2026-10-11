@@ -266,3 +266,53 @@ describe("stricter compile checks", () => {
     ).toThrow(ScenarioError)
   })
 })
+
+describe("presets and dates", () => {
+  it("accepts the stress presets and labelled ones", () => {
+    expect(() =>
+      defineMachine({
+        fields: {
+          a: { type: "string", default: "", presets: "stress" },
+          b: { type: "number", default: 1, min: 0, max: 10, presets: [0, { label: "Max", value: 10 }] },
+        },
+      })
+    ).not.toThrow()
+  })
+  it("refuses a preset the field would refuse to hold", () => {
+    expect(() =>
+      defineMachine({ fields: { b: { type: "number", default: 1, min: 0, max: 10, presets: [11] } } })
+    ).toThrow(/preset 11/)
+  })
+  it("refuses a preset with an empty label", () => {
+    expect(() =>
+      defineMachine({ fields: { a: { type: "string", default: "", presets: [{ label: " ", value: "x" }] } } })
+    ).toThrow(/empty label/)
+  })
+  it("refuses a date default that is not a date", () => {
+    expect(() => defineMachine({ fields: { d: { type: "date", default: "soon" } } })).toThrow(/not a date/)
+  })
+  it("drops an unreadable date from storage or the URL", () => {
+    const m = defineMachine({ fields: { d: { type: "date", default: null } } })
+    expect(m.sanitize({ fields: { d: "garbage" } })).toEqual({})
+    expect(m.sanitize({ fields: { d: "2026-01-01T00:00:00.000Z" } })).toEqual({ fields: { d: "2026-01-01T00:00:00.000Z" } })
+  })
+})
+
+import { STRESS_NUMBERS, STRESS_TEXT, presetsOf } from "./index"
+
+describe("presetsOf()", () => {
+  it("expands the stress text set", () => {
+    const list = presetsOf({ type: "string", default: "", presets: "stress" })
+    expect(list).toHaveLength(STRESS_TEXT.length)
+    expect(list.map((p) => p.label)).toContain("RTL")
+    expect(list.find((p) => p.label === "2,000 chars")!.value.length).toBeGreaterThan(1900)
+  })
+  it("keeps only stress numbers inside the range", () => {
+    const list = presetsOf({ type: "number", default: 0, min: 0, max: 100, presets: "stress" })
+    expect(list.every((p) => p.value >= 0 && p.value <= 100)).toBe(true)
+    expect(list.length).toBeLessThan(STRESS_NUMBERS.length)
+  })
+  it("labels bare values, and calls an empty string Empty", () => {
+    expect(presetsOf({ type: "string", default: "", presets: ["", "hi"] }).map((p) => p.label)).toEqual(["Empty", "hi"])
+  })
+})

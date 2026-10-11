@@ -15,6 +15,7 @@ decision is the one that matters; the wiring is mechanical.
 - [Recipe 5 — a control for one screen only](#recipe-5--a-control-for-one-screen-only)
 - [Recipe 6 — driving CSS from a scenario](#recipe-6--driving-css-from-a-scenario)
 - [Recipe 7 — the app writing to the scenario](#recipe-7--the-app-writing-to-the-scenario)
+- [Recipe 8 — stress-testing a layout](#recipe-8--stress-testing-a-layout)
 - [Worked example — the whole space](#worked-example--the-whole-space)
 
 ---
@@ -262,6 +263,52 @@ This is legitimate and expected. What changes versus a hand-rolled store is that
 modal cannot write half a tuple: it names the state, and the state knows what that
 means. If `keyMade` is not reachable from where the user is, the move is refused and
 the console says why — which is usually a real bug in the flow you just built.
+
+---
+
+## Recipe 8 — stress-testing a layout
+
+The states that break a component are rarely the ones in the mock. A card designed
+around "Acme Inc" meets a 60-character German compound, an Arabic customer name, an
+unread count of 1,000,000 and a user with their text size at 200%. Make each of those
+one click away.
+
+**Content edge cases are fields with presets.** They vary on their own and mean
+nothing to the journey, so they are fields (principle 10), and `presets: "stress"`
+loads the built-in worst cases:
+
+```ts
+fields: {
+  projectName: { type: "string", label: "Project name", group: "Stress",
+                 default: "Acme gateway", presets: "stress", multiline: true },
+  unread:      { type: "number", label: "Unread", group: "Stress",
+                 default: 3, min: 0, presets: "stress" },
+  members:     { type: "number", label: "Members", group: "Stress",
+                 default: 4, min: 0, max: 500,
+                 presets: [0, 1, { label: "Page", value: 25 }, { label: "Page + 1", value: 26 }] },
+}
+```
+
+The stress text set covers empty, whitespace only, one character, long, 2,000
+characters, an unbreakable compound and URL, a long email, right-to-left, mixed
+direction, CJK, emoji sequences, diacritics, markup and newlines. Use `multiline: true`
+so the newlines survive. The number set keeps only what fits `min`/`max`. Put your own
+boundaries beside it, especially the collection ones — empty, one, a page, a page plus
+one.
+
+**Collection sizes belong in the data machine when they change the screen's shape.**
+"Empty" is a different layout from "one" and from "many"; that is Recipe 2's data
+machine, not a number field.
+
+**Page-wide conditions are already in the panel.** The Page section sets text
+direction, scales the root font size the way a browser text-size setting does, and
+slows or pauses CSS and Web Animations. Do not model these as fields: they are states
+of the person looking, not of the product.
+
+A stress pass, then, is: open the screen, walk the data machine through
+empty/one/many, click through the Project name presets, then flip Direction to RTL and
+Text size to 200% and look again. The Copy button in the panel's header records exactly
+which combination broke, as text to paste into the bug.
 
 ---
 

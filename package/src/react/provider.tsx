@@ -242,17 +242,29 @@ export function ScenarioProvider({
      rather than props — the generalisation of a hand-rolled density toggle. */
   React.useEffect(() => {
     if (typeof document === "undefined") return
-    const applied: Array<[Element, string]> = []
+    /* What the page had before, so unmounting puts it back rather than
+       deleting an attribute the product's own markup set (a server-rendered
+       `data-theme`, a `dir` from the locale). */
+    const applied: Array<[Element, string, string | null]> = []
     for (const [id, def] of Object.entries(m.config.fields)) {
       const binding = "dom" in def ? def.dom : undefined
       if (!binding) continue
       const el = binding.target === "body" ? document.body : document.documentElement
       if (!el) continue
-      el.setAttribute(binding.attribute, String(context[id]))
-      applied.push([el, binding.attribute])
+      const before = el.getAttribute(binding.attribute)
+      try {
+        el.setAttribute(binding.attribute, String(context[id]))
+      } catch {
+        if (isDev) console.warn(`[prototype-machine] "${binding.attribute}" is not a valid attribute name for field "${id}".`)
+        continue
+      }
+      applied.push([el, binding.attribute, before])
     }
     return () => {
-      for (const [el, attribute] of applied) el.removeAttribute(attribute)
+      for (const [el, attribute, before] of applied.reverse()) {
+        if (before === null) el.removeAttribute(attribute)
+        else el.setAttribute(attribute, before)
+      }
     }
   }, [m, context])
 

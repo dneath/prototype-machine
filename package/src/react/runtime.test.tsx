@@ -81,4 +81,16 @@ describe("runtime", () => {
     await new Promise((r) => setTimeout(r, 200))
     expect(window.localStorage.getItem("rt-v1")).toBeNull()
   })
+
+  it("restores an attribute the page set itself when unbinding", () => {
+    document.documentElement.setAttribute("data-theme", "brand")
+    const { unmount } = render(
+      <ScenarioProvider machine={themed} storageKey="rt-v1" enabled>
+        <Grab />
+      </ScenarioProvider>
+    )
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light")
+    unmount()
+    expect(document.documentElement.getAttribute("data-theme")).toBe("brand")
+  })
 })

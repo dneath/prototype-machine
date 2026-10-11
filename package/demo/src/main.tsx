@@ -74,6 +74,24 @@ function Screen({ path, navigate }: { path: string; navigate: (to: string) => vo
         <p>A checklist, {p.connected} done. No traffic yet, so no metrics.</p>
       )}
 
+      <article className="card">
+        <h2>{p.projectName}</h2>
+        <p className="muted">
+          {p.unread} unread · {p.region}
+        </p>
+      </article>
+
+      {p.modal ? (
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="Host modal">
+          <div className="sheet">
+            <p>A host modal at z-index 9999. The panel stays above it and clickable.</p>
+            <select aria-label="Host select" defaultValue="a">
+              <option value="a">The host's own native select</option>
+            </select>
+          </div>
+        </div>
+      ) : null}
+
       <dl>
         <div><dt>journey</dt><dd>{p.journey}</dd></div>
         <div><dt>step</dt><dd>{p.step}</dd></div>
@@ -86,6 +104,7 @@ function Screen({ path, navigate }: { path: string; navigate: (to: string) => vo
         <div><dt>density</dt><dd>{p.density}</dd></div>
         <div><dt>seats</dt><dd>{p.seats}</dd></div>
         <div><dt>hasTraffic</dt><dd>{String(p.hasTraffic)}</dd></div>
+        <div><dt>projectName</dt><dd>{JSON.stringify(p.projectName).slice(0, 60)}</dd></div>
       </dl>
 
       <p className="muted">

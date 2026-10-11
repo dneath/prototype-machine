@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.10.0
+
+The panel now owns its styling completely, its dropdowns work everywhere, and it can
+stress-test the layout it sits beside.
+
+### Changed
+- The panel renders through a portal into a shadow root on a `<prototype-machine>`
+  element on `<body>`. Host stylesheets cannot reach it; `:host` resets every inherited
+  property with `!important`; the host element pins its own position with an inline
+  `!important` style. An ancestor `transform` no longer re-anchors it, and RTL or a
+  scaled root font on the page no longer leaks into it.
+- Events from inside the panel stop at the host element, so host hotkeys don't fire while
+  typing in it, and a modal library's click-outside handler doesn't close the dialog
+  being inspected. Click-outside and Escape read `composedPath()`.
+- Default `zIndex` is now 2147483000, so the controls stay usable over the product's own
+  modals and toasts. Pass a lower value to sit under something that must never be
+  covered.
+- Enum and machine dropdowns are a panel-drawn listbox instead of a native `<select>`,
+  whose popup took the OS and host colour scheme and could be unreadable. The listbox
+  flips above the trigger when needed, grows a filter past ten options, supports the full
+  keyboard model including type-to-jump, and shows why an illegal state is unavailable.
+- The panel renders nothing until mounted on the client (it never did anything useful
+  on the server), so there is no panel markup to hydrate.
+- The header stays visible while a long panel scrolls.
+- `children` render inside the shadow root; build them from `Row`, `Pill` and `Select`.
+
+### Added
+- `presets` on string and number fields, with built-in `"stress"` sets (`STRESS_TEXT`,
+  `STRESS_NUMBERS`) for empty, long, unbreakable, RTL, mixed-direction, CJK, emoji,
+  diacritics, markup, newlines, and numeric boundaries.
+- `multiline` on string fields (a textarea).
+- `nullable` on date fields, and a "Not set" pill that writes `null`.
+- A per-field Reset beside a changed field's label, a header Reset with a changed count,
+  and a dot on the launcher while anything is off its default.
+- A header Copy button that copies the scenario as text (`summarize()` in core).
+- The Page section (`tools` prop, default true): text direction, root text size, and
+  slowed or paused CSS and Web Animations for the host page, each restored when off.
+- `Select` export, plus `summarize`, `changedCount`, `presetsOf` and `isDate` in core.
+
+### Fixed
+- Date values that `Date` cannot read are refused from `set`, storage and URLs, and a
+  bad date default throws at boot.
+- A `dom` binding restores the attribute the page had before, instead of deleting it.
+- An action whose `run` throws warns instead of taking the panel down.
+- `describe()` no longer prints "undefined" for a machine without a label.
+- A number input shows when its draft is out of range.
+
 ## 0.9.0
 
 ### Removed
