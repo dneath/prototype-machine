@@ -1,0 +1,108 @@
+:root { color-scheme: light dark; --pad: 16px; }
+[data-density="compact"] { --pad: 8px; }
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: #fafafa;
+  color: #171717;
+}
+@media (prefers-color-scheme: dark) {
+  body { background: #0b0b0b; color: #ededed; }
+}
+
+main { max-width: 720px; margin: 0 auto; padding: 40px 24px 120px; }
+nav { display: flex; gap: 8px; margin-bottom: 24px; }
+nav button {
+  padding: calc(var(--pad) / 2) var(--pad);
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+}
+nav button[data-current="true"] { opacity: 1; font-weight: 600; }
+h1 { font-size: 24px; margin: 0 0 12px; }
+.muted { opacity: 0.6; }
+.bad { color: #b91c1c; }
+dl {
+  margin: 24px 0;
+  padding: var(--pad);
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+dl > div { display: flex; gap: 12px; padding: 2px 0; }
+dt { min-width: 130px; opacity: 0.6; }
+dd { margin: 0; }
+details { margin: 24px 0; }
+summary { cursor: pointer; opacity: 0.7; }
+pre {
+  margin-top: 12px;
+  padding: var(--pad);
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.card {
+  max-width: 280px;
+  padding: var(--pad);
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+}
+.card h2 { margin: 0 0 4px; font-size: 18px; overflow-wrap: anywhere; }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+.sheet { max-width: 360px; padding: 24px; border-radius: 12px; background: #fff; color: #111; }
+
+/* The hostile host. Everything here is something a real product's global
+   stylesheet has done; none of it may reach the panel. */
+[data-hostile="true"] { color-scheme: light; font-size: 20px; letter-spacing: 0.1em; }
+[data-hostile="true"] body { background: #fff7d6; color: #5a3b00; }
+[data-hostile="true"] * { font-family: Georgia, serif !important; text-transform: uppercase; line-height: 2.2; }
+[data-hostile="true"] button, [data-hostile="true"] input, [data-hostile="true"] select {
+  all: unset;
+  background: #ffe066 !important;
+  color: #000 !important;
+  border: 3px solid hotpink !important;
+  padding: 12px !important;
+}
+[data-hostile="true"] select option { background: #fff !important; color: #ccc !important; }
+[data-hostile="true"] div { box-sizing: content-box; }
+[data-hostile="true"] #root { transform: translateZ(0) rotate(0.5deg); }
+[data-hostile="true"] body > * { position: relative; z-index: 1; display: flex; }
+
+/* The app's own request log styles. The bench page inherits them, which is
+   the point: it adds no styles of its own. */
+.bench { padding: 40px 24px; }
+.log { border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 10px; overflow: hidden; background: Canvas; }
+.log-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(128, 128, 128, 0.3); }
+.log-head h2 { margin: 0; font-size: 15px; flex: 1; }
+.log-head button, .log-message button, .log-foot button {
+  padding: 6px 10px; border: 1px solid rgba(128, 128, 128, 0.5); border-radius: 6px;
+  background: transparent; color: inherit; font: inherit; font-size: 13px; cursor: pointer;
+}
+.log-updating { font-size: 12px; opacity: 0.7; }
+.log table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.log th, .log td { padding: 8px 16px; text-align: left; border-bottom: 1px solid rgba(128, 128, 128, 0.18); white-space: nowrap; }
+.log th { font-weight: 600; font-size: 12px; opacity: 0.75; }
+.log .num { text-align: right; font-variant-numeric: tabular-nums; }
+.log [data-result="400"], .log [data-result="429"] { color: #b91c1c; }
+.log-skeleton { height: 14px; margin: 14px 16px; border-radius: 4px; background: rgba(128, 128, 128, 0.18); }
+.log-message { padding: 32px 16px; }
+.log-message p { margin: 0 0 8px; }
+.log-foot { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; font-size: 13px; }

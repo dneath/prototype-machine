@@ -1,0 +1,43 @@
+/* prototype-machine: the React entry.
+ *
+ * The interesting states of a product are states, not screens, and almost none
+ * of them are reachable by clicking. This puts them one click away without
+ * putting a role switcher in your settings tray. */
+
+export {
+  ScenarioProvider,
+  ScenarioContext,
+  useHydrated,
+  type Scenario,
+  type ScenarioApi,
+  type ScenarioProviderProps,
+} from "./react/provider"
+export { useScenario, useScenarioSelector, useScenarioValue, type TypedScenario } from "./react/use-scenario"
+export { ScenarioPanel, type PanelPosition, type ScenarioPanelProps } from "./react/panel"
+export { StateBench } from "./react/switcher"
+export {
+  STATE_PARAM,
+  useStateParam,
+  type BenchStateDef,
+  type BenchStates,
+  type StateBenchProps,
+  type StateParamOptions,
+} from "./react/bench-state"
+export {
+  useDrag,
+  clampToViewport,
+  cornerPosition,
+  snapTarget,
+  DRAG_THRESHOLD,
+  SNAP_DISTANCE,
+  type Corner,
+  type Placement,
+  type Point,
+  type UseDragOptions,
+  type UseDragResult,
+} from "./react/drag"
+export { FieldRow, MachineRow, Pill, Row } from "./react/controls"
+export { Select, type SelectOption } from "./react/select"
+export { injectStyles, styles } from "./react/styles"
+
+export * from "./core/index"

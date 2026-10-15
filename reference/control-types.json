@@ -1,0 +1,305 @@
+{
+  "$comment": "Machine-readable catalogue for prototype-machine 0.11.0. Human docs: ./api.md",
+  "version": "0.11.0",
+  "kinds": {
+    "machine": {
+      "description": "A journey. One state is current; each state writes a whole tuple of context via `assign`. Use when moving one value alone would produce a state the product cannot be in.",
+      "keys": {
+        "initial": {
+          "type": "string",
+          "required": true,
+          "description": "Starting state id. Must be a key of `states`."
+        },
+        "states": {
+          "type": "Record<string, {label?, note?, assign?}>",
+          "required": true,
+          "description": "`assign` is the tuple this state writes. `note` is the tooltip."
+        },
+        "transitions": {
+          "type": "Record<string, string[]>",
+          "required": false,
+          "description": "Legal moves as from -> to[]. Omit the key entirely for fully connected; supply `{a: []}` for a deliberate dead end."
+        },
+        "label": {
+          "type": "string",
+          "required": false
+        },
+        "group": {
+          "type": "string",
+          "required": false,
+          "description": "Section the row renders under. Sections appear in first-seen order; ungrouped controls render first."
+        },
+        "param": {
+          "type": "string",
+          "required": false,
+          "description": "Query-string key. Defaults to the id."
+        },
+        "when": {
+          "type": "(env: Env) => boolean",
+          "required": false
+        },
+        "hidden": {
+          "type": "boolean",
+          "required": false
+        }
+      },
+      "example": "journey: { label: 'Get connected', initial: 'firstRun', states: { firstRun: { assign: { step: 1, keyIssued: false } }, keyMade: { assign: { step: 2, keyIssued: true } } }, transitions: { firstRun: ['keyMade'], keyMade: ['firstRun'] } }"
+    }
+  },
+  "commonFieldKeys": {
+    "default": {
+      "required": true,
+      "description": "Required on every field. Also what a URL omits when the value matches."
+    },
+    "label": {
+      "required": false
+    },
+    "note": {
+      "required": false,
+      "description": "Tooltip text."
+    },
+    "group": {
+      "required": false,
+      "description": "Section the row renders under. Sections appear in the order their group is first seen across machines, fields and actions; ungrouped controls render first."
+    },
+    "hidden": {
+      "required": false,
+      "description": "Kept in context, URL and storage; hidden from the panel."
+    },
+    "param": {
+      "required": false,
+      "description": "Query-string key. Defaults to the id."
+    },
+    "when": {
+      "required": false,
+      "description": "(env) => boolean. Hides the control where it is meaningless."
+    }
+  },
+  "fieldTypes": {
+    "boolean": {
+      "value": "boolean",
+      "control": "Two pills",
+      "keys": {
+        "trueLabel": "string",
+        "falseLabel": "string",
+        "dom": "{attribute, target?}"
+      },
+      "example": "hasEvents: { type: 'boolean', label: 'Guardrail events', default: true, trueLabel: 'Some', falseLabel: 'None' }",
+      "urlEncoding": "1 / 0 (also accepts true / false and on / off)"
+    },
+    "enum": {
+      "value": "literal union of the option values",
+      "control": "Pills, or a panel-drawn dropdown (listbox, filter past 10 options) once there are more than 6 options",
+      "keys": {
+        "options": "Array<string | {value, label?, note?}>",
+        "control": "'pills' | 'select'",
+        "dom": "{attribute, target?}"
+      },
+      "example": "density: { type: 'enum', label: 'Density', default: 'comfortable', options: ['comfortable', 'compact'], dom: { attribute: 'data-density' } }",
+      "urlEncoding": "the option value verbatim",
+      "validation": "`default` must be one of `options`, or compile throws."
+    },
+    "number": {
+      "value": "number",
+      "control": "Number input by default; a slider with control: 'range'",
+      "keys": {
+        "min": "number",
+        "max": "number",
+        "step": "number",
+        "control": "'stepper' | 'range'",
+        "presets": "Array<number | {label, value}> | 'stress'. One-click values; 'stress' keeps STRESS_NUMBERS inside min/max"
+      },
+      "example": "seats: { type: 'number', label: 'Seats', default: 12, min: 0, max: 500 }",
+      "urlEncoding": "decimal string; values outside min/max are dropped"
+    },
+    "string": {
+      "value": "string",
+      "control": "Text input, or a textarea with multiline: true",
+      "keys": {
+        "placeholder": "string",
+        "multiline": "boolean",
+        "presets": "Array<string | {label, value}> | 'stress'. One-click values; 'stress' is STRESS_TEXT (empty, long, unbreakable, RTL, CJK, emoji, markup, newlines…)"
+      },
+      "example": "chosenTool: { type: 'string', default: 'opencode', hidden: true }",
+      "urlEncoding": "verbatim"
+    },
+    "date": {
+      "value": "string | null",
+      "control": "datetime-local input plus a 'Not set' pill; stored as an ISO string in UTC",
+      "keys": {
+        "nullable": "boolean (default true). Offers the 'Not set' pill"
+      },
+      "example": "expiresAt: { type: 'date', label: 'Expires', default: null }",
+      "urlEncoding": "ISO string, or empty for null",
+      "validation": "`default` must be null or a string Date can read, or compile throws."
+    }
+  },
+  "derive": {
+    "description": "Computed from context, never stored and never in a URL. Use whenever a value follows from another rather than varying on its own.",
+    "signature": "Record<string, (ctx) => value>",
+    "example": "hasTraffic: (ctx) => ctx.journey === 'active'",
+    "note": "`ctx` contains machine cursors, assigned tuples and fields, but not other derived values."
+  },
+  "actions": {
+    "description": "Buttons after the panel's children, or inside a section when given a `group`.",
+    "keys": {
+      "id": "string",
+      "label": "string",
+      "title": "string?",
+      "group": "string?  Renders the button inside that section, after its rows. Ungrouped actions render last.",
+      "when": "(env) => boolean",
+      "run": "(api) => void"
+    },
+    "api": [
+      "set",
+      "go",
+      "reset",
+      "navigate",
+      "get"
+    ],
+    "example": "{ id: 'restart', label: 'Restart scenario', run: (api) => { api.reset(); api.navigate('/signin') } }"
+  },
+  "selectThreshold": 6,
+  "reservedContextNames": [
+    "set",
+    "go",
+    "can",
+    "movesFrom",
+    "reset",
+    "snapshot",
+    "machine",
+    "storageKey",
+    "env",
+    "navigate",
+    "open",
+    "setOpen",
+    "hydrated",
+    "enabled"
+  ],
+  "precedence": [
+    "defaults",
+    "localStorage",
+    "URL",
+    "session edits"
+  ],
+  "opensOnly": "a click on the launcher button; there is no keyboard shortcut that opens the panel or the switcher, and no prop to bind one",
+  "keyboard": {
+    "Escape": "close the open dropdown; otherwise close the panel",
+    "arrows": "nudge the panel while its handle has focus; shift for a bigger step",
+    "drag near a corner": "snap the panel to it (within 140px)",
+    "dropdown": "ArrowDown/ArrowUp open it; inside: arrows, Home/End, PageUp/PageDown, type-to-jump, Enter/Space choose, Tab back to the trigger",
+    "switcher": "ArrowLeft/ArrowRight/ArrowUp/ArrowDown step to the previous or next state, skipping disabled ones and wrapping; Home/End go to the first or last. Only while focus is inside the bar. No page-wide keys."
+  },
+  "sections": {
+    "description": "Any machine, field or action may carry `group`. Controls sharing a group render under one collapsible title. A section is a title plus its controls; never explanatory subtext.",
+    "order": [
+      "ungrouped controls first, in declaration order",
+      "then sections in first-seen order across machines, fields, actions",
+      "inside a section: machines, fields, then that section's actions",
+      "ungrouped actions at the foot, after children"
+    ],
+    "coreHelper": "sectionsOf(machine.config, env) => PanelSection[]  ({ group: string | null, machines, fields, actions })"
+  },
+  "panel": {
+    "isolation": "Renders into a shadow root on a <prototype-machine> element on <body>. Host CSS cannot reach it; :host resets inherited properties with !important; events stop at the host element.",
+    "zIndexDefault": 2147483000,
+    "header": [
+      "copy scenario as text",
+      "reset scenario (with changed count)",
+      "pin",
+      "close"
+    ],
+    "perFieldReset": "A changed field shows a Reset beside its label.",
+    "pageTools": {
+      "prop": "tools (default true)",
+      "direction": [
+        "auto",
+        "ltr",
+        "rtl"
+      ],
+      "textSize": [
+        1,
+        1.25,
+        1.5,
+        2
+      ],
+      "motion": [
+        "normal",
+        "slow",
+        "paused"
+      ]
+    },
+    "avoidBars": "boolean, default true. Corners move inward by the height of bars fixed to the top or bottom edge (fixed or sticky, at least half the viewport wide, at most 30% of its height)."
+  },
+  "bench": {
+    "component": "StateBench",
+    "needsProvider": false,
+    "props": {
+      "states": {
+        "type": "Record<string, string | {label?, note?}>",
+        "required": true,
+        "description": "Every state, in switcher order. The key is the URL value."
+      },
+      "children": {
+        "type": "(state) => ReactNode",
+        "required": true,
+        "description": "Renders the real component in one state. Called for the active state only."
+      },
+      "missing": {
+        "type": "Record<string, string | {label?, note?}>",
+        "description": "States the design shows but the code cannot reach. Listed, disabled, never rendered."
+      },
+      "initial": {
+        "type": "string",
+        "default": "the first state"
+      },
+      "param": {
+        "type": "string",
+        "default": "__state"
+      },
+      "width": {
+        "type": "number | string",
+        "description": "Production width of the component. A number is pixels."
+      },
+      "label": {
+        "type": "string",
+        "default": "States",
+        "description": "Accessible name of the switcher."
+      },
+      "placement": {
+        "type": "'bottom' | 'top'",
+        "default": "bottom"
+      },
+      "offset": {
+        "type": "number | string",
+        "default": "24px"
+      },
+      "zIndex": {
+        "type": "number",
+        "default": 2147483000
+      },
+      "nonce": {
+        "type": "string"
+      },
+      "enabled": {
+        "type": "boolean",
+        "default": "NODE_ENV !== 'production'",
+        "description": "Whether the switcher mounts. The state renders either way."
+      },
+      "avoidBars": {
+        "type": "boolean",
+        "default": true,
+        "description": "Keep the switcher clear of bars fixed to its edge of the page. Ignored when offset is set."
+      }
+    },
+    "url": "?__state=<id>, written with replaceState; other parameters and the hash are kept",
+    "markup": {
+      "container": "[data-state-bench][data-state=<id>]",
+      "spacer": "[data-state-bench-spacer]",
+      "switcherHost": "prototype-machine[data-pm-layer=switcher]"
+    },
+    "production": "The main entry renders the URL's state without the switcher.",
+    "hook": "useStateParam(ids, { initial, param?, missing? }) => [state | null, setState]",
+    "workflow": "./bench.md"
+  }
+}
