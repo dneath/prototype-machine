@@ -50,7 +50,7 @@ export interface StateBenchProps<T extends BenchStates> {
   label?: string
   /** Where the switcher sits. Default `"bottom"`. Use `"top"` when the component sits at the bottom of the viewport. */
   placement?: "bottom" | "top"
-  /** Distance from that edge. A number is pixels; a string is any CSS length, such as `"calc(var(--banner-h) + 8px)"`. */
+  /** Distance from that edge. A number is pixels; a string is any CSS length, such as `"calc(var(--header-h) + 8px)"`. */
   offset?: number | string
   /** Stacking order of the switcher. Default 2147483000. */
   zIndex?: number
@@ -58,6 +58,8 @@ export interface StateBenchProps<T extends BenchStates> {
   nonce?: string
   /** Whether the switcher mounts. Defaults to "not a production build". The state still renders either way. */
   enabled?: boolean
+  /** Keep the switcher clear of bars fixed to the page's top or bottom edge. Default true. Ignored when `offset` is set. */
+  avoidBars?: boolean
   /** Renders the real component in one state. Called for the active state only. */
   children: (state: keyof T & string) => React.ReactNode
 }
@@ -196,16 +198,19 @@ export function BenchBody({
   state,
   width,
   reserve,
+  extra = 0,
   children,
 }: {
   state: string | null
   width?: number | string
   /** Room for the switcher, so it never covers the end of a long component. */
   reserve?: "top" | "bottom" | null
+  /** Extra room, in px, when the switcher sits above a bar fixed to that edge. */
+  extra?: number
   children: React.ReactNode
 }) {
   const w = cssLength(width)
-  const spacer = <div aria-hidden="true" data-state-bench-spacer="" style={{ height: 88 }} />
+  const spacer = <div aria-hidden="true" data-state-bench-spacer="" style={{ height: 88 + extra }} />
   return (
     <>
       {reserve === "top" ? spacer : null}

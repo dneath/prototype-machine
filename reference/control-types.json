@@ -228,7 +228,8 @@
         "slow",
         "paused"
       ]
-    }
+    },
+    "avoidBars": "boolean, default true. Corners move inward by the height of bars fixed to the top or bottom edge (fixed or sticky, at least half the viewport wide, at most 30% of its height)."
   },
   "bench": {
     "component": "StateBench",
@@ -284,6 +285,11 @@
         "type": "boolean",
         "default": "NODE_ENV !== 'production'",
         "description": "Whether the switcher mounts. The state renders either way."
+      },
+      "avoidBars": {
+        "type": "boolean",
+        "default": true,
+        "description": "Keep the switcher clear of bars fixed to its edge of the page. Ignored when offset is set."
       }
     },
     "url": "?__state=<id>, written with replaceState; other parameters and the hash are kept",
@@ -302,7 +308,8 @@
         "offset": "number | string",
         "zIndex": "number",
         "nonce": "string",
-        "enabled": "default: the provider's"
+        "enabled": "default: the provider's",
+        "avoidBars": "boolean, default true"
       },
       "illegalMoves": "disabled, with the panel's reason"
     },

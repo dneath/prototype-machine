@@ -254,10 +254,10 @@ describe("the switcher", () => {
   })
 
   it("moves to the top edge and takes an offset", () => {
-    render(<Bench placement="top" offset="calc(var(--banner-h) + 8px)" />)
+    render(<Bench placement="top" offset="calc(var(--header-h) + 8px)" />)
     const nav = bar.getByRole("navigation", { name: "States" })
     expect(nav.className).toContain("pm-switcher-top")
-    expect(nav.style.top).toBe("calc(var(--banner-h) + 8px)")
+    expect(nav.style.top).toBe("calc(var(--header-h) + 8px)")
     const spacer = document.querySelector("[data-state-bench-spacer]")!
     expect(spacer.nextElementSibling?.hasAttribute("data-state-bench")).toBe(true)
   })

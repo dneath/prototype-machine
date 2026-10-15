@@ -9,6 +9,7 @@ import { type ActionApi, type ActionDef } from "../core/index"
 import { FieldRow, MachineRow, Pill, Row } from "./controls"
 import { CheckIcon, ChevronIcon, CloseIcon, CopyIcon, NodesIcon, PinIcon, ResetIcon, SearchIcon } from "./icons"
 import { useDrag } from "./drag"
+import { edgeVars, useEdgeInsets } from "./edges"
 import { TOP_Z_INDEX, deepActiveElement, eventWithin, useShadowLayer } from "./shadow"
 import {
   DEFAULT_TOOLS,
@@ -49,6 +50,11 @@ export interface ScenarioPanelProps {
   /** Override the dev-only default. */
   enabled?: boolean
   /**
+   * Keep the corners clear of bars fixed to the top or bottom edge of the
+   * page, such as a header or a footer. Default true.
+   */
+  avoidBars?: boolean
+  /**
    * The Page section: text direction, text size and motion for the whole
    * host page. Default true.
    */
@@ -81,12 +87,14 @@ export function ScenarioPanel({
   inset,
   nonce,
   enabled,
+  avoidBars = true,
   tools: showTools = true,
   children,
 }: ScenarioPanelProps) {
   const p = useScenario()
   const active = enabled ?? p.enabled
   const layer = useShadowLayer(active, zIndex, nonce, "panel")
+  const edges = edgeVars(useEdgeInsets(active && avoidBars))
 
   const panelRef = React.useRef<HTMLDivElement>(null)
   const launcherRef = React.useRef<HTMLButtonElement>(null)
@@ -235,7 +243,7 @@ export function ScenarioPanel({
           ref={launcherRef}
           type="button"
           className={`pm-root${corner} pm-launcher${dragClass}`}
-          style={{ zIndex: 1, ...offset }}
+          style={{ zIndex: 1, ...edges, ...offset }}
           onClick={() => {
             focusOnOpen.current = true
             p.setOpen(true)
@@ -256,7 +264,7 @@ export function ScenarioPanel({
           <div
             aria-hidden="true"
             className={`pm-root pm-${drag.snapPreview} pm-snap-preview pm-snap-launcher`}
-            style={{ zIndex: 0 }}
+            style={{ zIndex: 0, ...edges }}
           />
         ) : null}
       </>,
@@ -348,7 +356,7 @@ export function ScenarioPanel({
     <div
       ref={panelRef}
       className={`pm-root${corner} pm-panel${dragClass}`}
-      style={{ zIndex: 1, ...offset }}
+      style={{ zIndex: 1, ...edges, ...offset }}
       role="dialog"
       aria-label={title}
       tabIndex={-1}
@@ -517,7 +525,7 @@ export function ScenarioPanel({
       <div
         aria-hidden="true"
         className={`pm-root pm-${drag.snapPreview} pm-snap-preview pm-snap-panel`}
-        style={{ zIndex: 0 }}
+        style={{ zIndex: 0, ...edges }}
       />
     ) : null}
     </>,

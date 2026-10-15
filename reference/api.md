@@ -193,6 +193,8 @@ In development, two providers sharing a `storageKey` log a warning.
 | `inset` | `{ name: string; value: string }` | None |
 | `nonce` | `string` | None |
 | `enabled` | `boolean` | the provider's |
+| `avoidBars` | `boolean` | `true` |
+| `avoidBars` | `boolean` | `true` |
 | `tools` | `boolean` | `true` |
 | `children` | `ReactNode` | None |
 
@@ -280,8 +282,15 @@ Tools persist with the panel's other UI state. `tools={false}` removes the secti
 host can push its own corner UI clear: `{ name: "--toast-inset-bottom", value: "4.5rem" }`.
 
 `zIndex` defaults to 2147483000 so the controls stay reachable over the product's own
-modals. Lower it if something must never be covered, like a mandated classification
-banner.
+modals. Lower it if something must never be covered, even after someone drags the panel
+over it.
+
+`avoidBars` (default `true`) keeps the corners clear of bars fixed to the top or bottom
+edge of the page, such as a header or a footer. A bar counts when it is `fixed` or
+`sticky`, touches the edge, spans at least half the viewport's width, and is no taller
+than 30% of its height. The corner moves inward by the bar's height, and an open panel's
+height leaves room for both edges. The check runs again after a resize, a scroll or a
+change to the page. A panel dragged to a free position stays where it was put.
 
 `nonce` is set on the `<style>` element inside the shadow root, for pages with a strict
 CSP.
@@ -370,10 +379,11 @@ workflow, read [bench.md](bench.md).
 | `width` | `number \| string` | the page's width | As wide as the component is in production. A number is pixels. Capped at `100%`. |
 | `label` | `string` | `"States"` | The switcher's accessible name. |
 | `placement` | `"bottom" \| "top"` | `"bottom"` | The edge the switcher sits on, centered. |
-| `offset` | `number \| string` | `24px` | Distance from that edge. A string is any CSS length, such as `"calc(var(--banner-h) + 8px)"`. |
+| `offset` | `number \| string` | `24px` | Distance from that edge. A string is any CSS length, such as `"calc(var(--header-h) + 8px)"`. |
 | `zIndex` | `number` | `2147483000` | Stacking order of the switcher. |
 | `nonce` | `string` | None | Set on the switcher's `<style>`, for a strict CSP. |
 | `enabled` | `boolean` | `NODE_ENV !== "production"` | Whether the switcher mounts. The state renders either way. |
+| `avoidBars` | `boolean` | `true` | Keep the switcher clear of bars fixed to its edge of the page. Ignored when `offset` is set. |
 
 **The URL is the source of truth.** A click writes `?__state=<id>` with `replaceState`.
 Other parameters and the hash are kept. Back and forward are followed. A click always
@@ -395,6 +405,8 @@ held request belongs to the state that set it up.
 
 The container sets only `width` and `max-width`. The spacer is on the switcher's side, so
 the bar never covers the end of a long component. Without the switcher there is no spacer.
+When the switcher sits above a bar fixed to the page's edge, it moves 8px clear of the bar
+and the spacer grows by the bar's height.
 
 **The switcher** renders in its own shadow root (`data-pm-layer="switcher"`), apart from
 the panel. It is a `<nav>` with the `label` as its name and a button for each state, with

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom"
 import { has, isDev, visible, warn } from "../core/index"
 import { BenchBody, type BenchStates, type StateBenchProps, labelOf, noteOf, cssLength, useBench } from "./bench-state"
 import { unreachableReason } from "./controls"
+import { type EdgeInsets, useEdgeInsets } from "./edges"
 import { EyeOffIcon } from "./icons"
 import { TOP_Z_INDEX, useShadowLayer } from "./shadow"
 import { useScenario } from "./use-scenario"
@@ -42,6 +43,8 @@ export interface SwitcherBarProps {
   zIndex: number
   nonce?: string
   active: boolean
+  /** Bars fixed to the page's edges. Ignored when `offset` is set. */
+  edges: EdgeInsets
   onHide(): void
 }
 
@@ -67,6 +70,7 @@ export function SwitcherBar({
   label,
   placement,
   offset,
+  edges,
   zIndex,
   nonce,
   active,
@@ -125,6 +129,7 @@ export function SwitcherBar({
   const edge = cssLength(offset)
   const style: React.CSSProperties = { zIndex: 1 }
   if (edge !== undefined) style[placement] = edge
+  else if (edges[placement] > 0) style[placement] = `${Math.max(24, edges[placement] + 8)}px`
 
   return createPortal(
     <nav
@@ -188,10 +193,11 @@ export function SwitcherBar({
  * ```
  */
 export function StateBench<T extends BenchStates>(props: StateBenchProps<T>) {
-  const { states, missing, width, label = "States", placement = "bottom", offset, zIndex = TOP_Z_INDEX, nonce, enabled, children } = props
+  const { states, missing, width, label = "States", placement = "bottom", offset, zIndex = TOP_Z_INDEX, nonce, enabled, avoidBars = true, children } = props
   const { ids, missingIds, state, setState } = useBench(props)
   const [hidden, setHidden] = React.useState(false)
   const active = (enabled ?? isDev) && !hidden
+  const edges = useEdgeInsets(active && avoidBars && offset === undefined)
 
   const options: SwitcherOption[] = [
     ...ids.map((id) => ({ id, label: labelOf(id, states[id]), note: noteOf(states[id]) })),
@@ -208,7 +214,7 @@ export function StateBench<T extends BenchStates>(props: StateBenchProps<T>) {
 
   return (
     <>
-      <BenchBody state={state} width={width} reserve={active ? placement : null}>
+      <BenchBody state={state} width={width} reserve={active ? placement : null} extra={edges[placement]}>
         {state === null ? null : children(state)}
       </BenchBody>
       <SwitcherBar
@@ -218,6 +224,7 @@ export function StateBench<T extends BenchStates>(props: StateBenchProps<T>) {
         label={label}
         placement={placement}
         offset={offset}
+        edges={edges}
         zIndex={zIndex}
         nonce={nonce}
         active={active}
@@ -240,6 +247,8 @@ export interface StateSwitcherProps {
   nonce?: string
   /** Override the provider's `enabled`. */
   enabled?: boolean
+  /** Keep clear of bars fixed to the page's top or bottom edge. Default true. */
+  avoidBars?: boolean
 }
 
 const warned = new Set<string>()
@@ -258,6 +267,7 @@ export function StateSwitcher({
   zIndex = TOP_Z_INDEX,
   nonce,
   enabled,
+  avoidBars = true,
 }: StateSwitcherProps) {
   const p = useScenario()
   const [hidden, setHidden] = React.useState(false)
@@ -268,6 +278,7 @@ export function StateSwitcher({
   }
   const shown = !!def && visible({ when: def.when }, p.env)
   const active = (enabled ?? p.enabled) && shown && !hidden
+  const edges = useEdgeInsets(active && avoidBars && offset === undefined)
 
   const current = def ? (p.snapshot.machines[id] ?? def.initial) : null
   const reason = def && current !== null ? unreachableReason(def, current, p.movesFrom(id)) : undefined
@@ -289,6 +300,7 @@ export function StateSwitcher({
       label={label ?? def?.label ?? id}
       placement={placement}
       offset={offset}
+      edges={edges}
       zIndex={zIndex}
       nonce={nonce}
       active={active}

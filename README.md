@@ -7,11 +7,27 @@ state it can be in, one link per state.
 
 The panel and the switcher render nothing in production.
 
+> **Status: 0.11.0, not on npm yet.** It will be published to npm later. Until then,
+> install it from a tarball that you build from this repo. See
+> [PUBLISHING.md](PUBLISHING.md).
+
 ## Quick start
 
+**0. Install it.** Build a tarball from this repo, then install the tarball in your app:
+
 ```bash
-npm install --save-exact prototype-machine -D
+git clone https://github.com/dneath/prototype-machine.git
+cd prototype-machine/package
+npm ci
+npm run build
+npm pack          # writes prototype-machine-0.11.0.tgz
+
+cd /path/to/your-app
+npm install --save-exact -D /path/to/prototype-machine/package/prototype-machine-0.11.0.tgz
 ```
+
+A tarball installs as copied files, so your app keeps one copy of React. When the package
+is on npm, this step becomes `npm install --save-exact prototype-machine -D`.
 
 **1. Describe the states.**
 
@@ -162,6 +178,9 @@ The full workflow is in [reference/bench.md](reference/bench.md).
 
 ## What you get
 
+**Out of the way.** The panel and the switcher keep clear of bars fixed to the top or
+bottom of the page, such as a header or a footer. Nothing to configure.
+
 **Nothing bound to the keyboard.** The panel opens from a click on its launcher. It
 binds no shortcut, so it never collides with your app's keys.
 
@@ -264,6 +283,7 @@ installed, these are the kinds of things to ask for.
 | [reference/recipes.md](reference/recipes.md) | How to model something: journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS. |
 | [reference/bench.md](reference/bench.md) | How to build a bench: find the states in the code, feed data at the boundary, verify each state in a browser, remove it. |
 | [SKILL.md](SKILL.md) | The agent skill itself. |
+| [PUBLISHING.md](PUBLISHING.md) | The plan and checklist for publishing to npm. |
 
 Two things worth knowing before you ship a review build:
 
@@ -279,8 +299,8 @@ Two things worth knowing before you ship a review build:
 - **Open an issue first.** Pull requests should reference one.
 - **Keep pull requests small.** One bug fix, one feature, or one refactor.
 - **No new runtime dependencies.** The package has zero, and that's a feature.
-- **Edit the README at the repo root.** `package/README.md` is generated from it on
-  publish and isn't tracked.
+- **Edit the README at the repo root.** `package/README.md` is copied from it when the
+  package is packed, and isn't tracked.
 - **`npm test`, `npm run typecheck` and `npm run build` all pass** before a PR.
 
 ```bash

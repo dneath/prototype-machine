@@ -155,10 +155,12 @@ not leak into the next.
 | A Hide button. | Removes the bar until the page reloads, for a clean screenshot. |
 | Instant switch. Scroll position kept. | Compare two states at the same place on the page. |
 | A spacer after the component. | The bar never covers the end of a long component. |
+| It moves clear of bars fixed to the page's edge. | It never covers a header or a footer. |
 | Missing states are struck through and disabled. | The gap stays visible. The note says what the code needs. |
 
 Props that change the defaults: `placement="top"` when the component sits at the bottom
-of the viewport, `offset` to clear a fixed banner, `param` when `__state` is taken. See
+of the viewport, `offset` to set the distance from the edge yourself, `param` when
+`__state` is taken. See
 [api.md](api.md#statebench).
 
 ## 7. Verify every state

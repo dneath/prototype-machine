@@ -14,6 +14,10 @@ A bench shows one component in every state its code can reach, one URL per state
 - `StateSwitcher`: the same bar for one machine of a scenario, inside the provider.
   Illegal moves are disabled with the panel's reason.
 - `useStateParam(ids, { initial, param, missing })`: the URL hook under the bench.
+- `avoidBars` on `ScenarioPanel`, `StateBench` and `StateSwitcher`, default `true`. The
+  tools keep clear of bars fixed to the top or bottom edge of the page (a header, a
+  footer). They hit-test the edges, so no configuration is needed, and check again after
+  a resize, a scroll or a change to the page.
 - The switcher bar: dark and neutral, in its own shadow root (`data-pm-layer="switcher"`),
   a labelled `nav` of `aria-pressed` buttons at the bottom center (`placement="top"` and
   `offset` move it). Scrolls sideways on narrow screens and keeps the current state in

@@ -136,10 +136,11 @@ const CSS = `
 }
 .pm-root svg { display: block; flex: none; overflow: visible; }
 
-.pm-bottom-right { right: 16px; bottom: 16px; }
-.pm-bottom-left  { left: 16px; bottom: 16px; }
-.pm-top-right    { right: 16px; top: 16px; }
-.pm-top-left     { left: 16px; top: 16px; }
+/* --pm-edge-*: the height of bars fixed to that edge of the page (edges.ts). */
+.pm-bottom-right { right: 16px; bottom: calc(16px + var(--pm-edge-bottom, 0px)); }
+.pm-bottom-left  { left: 16px; bottom: calc(16px + var(--pm-edge-bottom, 0px)); }
+.pm-top-right    { right: 16px; top: calc(16px + var(--pm-edge-top, 0px)); }
+.pm-top-left     { left: 16px; top: calc(16px + var(--pm-edge-top, 0px)); }
 
 .pm-launcher {
   display: grid;
@@ -188,8 +189,8 @@ const CSS = `
 .pm-panel {
   width: 288px;
   max-width: calc(100vw - 16px);
-  max-height: calc(100vh - 32px);
-  max-height: calc(100dvh - 32px);
+  max-height: calc(100vh - 32px - var(--pm-edge-top, 0px) - var(--pm-edge-bottom, 0px));
+  max-height: calc(100dvh - 32px - var(--pm-edge-top, 0px) - var(--pm-edge-bottom, 0px));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;

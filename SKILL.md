@@ -71,11 +71,15 @@ This guidance targets **prototype-machine 0.11.0**.
 
 1. Read the project's `package.json` and lockfile before touching anything. Check
    whether `prototype-machine` is already installed and at which version.
-2. **Never add or upgrade a dependency silently.** If the user authorises it, pin the
-   version:
+2. **Never add or upgrade a dependency silently.** The package is not on npm yet. If the
+   user authorises it, build a tarball from the repo and install that file:
    ```bash
-   npm install --save-exact prototype-machine@0.11.0 -D
+   # in prototype-machine/package
+   npm ci && npm run build && npm pack
+   # in the app
+   npm install --save-exact -D <path>/prototype-machine-0.11.0.tgz
    ```
+   When it is on npm: `npm install --save-exact prototype-machine@<version> -D`.
 3. **Never copy the package's source into the app.** It is an npm dependency, not a
    snippet to paste. If the user wants to modify it, they change the package.
 4. Requires React 18+. The `prototype-machine/core` entry needs no React and is what a
@@ -174,7 +178,8 @@ only while focus is in the bar.
    shows. "2 of 3, waiting pill live" is worth more than `keyMade`.
 9. **The panel has to be movable, because it covers the thing being reviewed.** It drags
    from its launcher or its header, snaps to a corner when released near one, and
-   remembers where it was put. Do not reintroduce a fixed corner as the only option.
+   remembers where it was put. Its corners keep clear of bars fixed to the page's top or
+   bottom edge by default (`avoidBars`); do not turn that off to make room. Do not reintroduce a fixed corner as the only option.
 10. **If it is not a state of the component, it is a field.** A theme switch, a density
    toggle, a locale: these vary freely, write no tuple and mean nothing to the machines.
    Modelling one as a machine puts it in a row beside the real journeys, which is how a
