@@ -49,7 +49,7 @@ describe("summarize()", () => {
   it("lists every control, marks what changed, and ends with the query", () => {
     const snap = { machines: { journey: "second" }, fields: { seats: 3 } }
     const text = summarize(m, snap)
-    expect(text).toContain("Journey: second — Second  (default first)")
+    expect(text).toContain('Journey: second "Second"  (default first)')
     expect(text).toContain("Seats: 3  (default 1)")
     expect(text).toContain("Query: ?journey=second&seats=3")
     expect(changedCount(m, snap)).toBe(2)

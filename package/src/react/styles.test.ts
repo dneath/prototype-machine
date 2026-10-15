@@ -9,7 +9,7 @@ function block(selector: string): string {
 }
 
 /**
- * The panel lives in a shadow root, so no host selector reaches it — but
+ * The panel lives in a shadow root, so no host selector reaches it, but
  * inheritance and custom properties still cross the boundary. These pin the
  * properties that the host would otherwise get to decide.
  */

@@ -34,7 +34,7 @@ export function useScenario(machine?: unknown): Scenario {
   const ctx = React.useContext(ScenarioContext)
   if (!ctx) {
     throw new Error(
-      "[prototype-machine] useScenario() was called outside <ScenarioProvider>. Wrap your app in it — usually in the root layout, above everything that reads a scenario."
+      "[prototype-machine] useScenario() was called outside <ScenarioProvider>. Wrap your app in it, usually in the root layout, above everything that reads a scenario."
     )
   }
   void machine

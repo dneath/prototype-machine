@@ -17,7 +17,7 @@ import { eventWithin } from "./shadow"
  * This one is a button that opens a listbox. The list is `position: fixed`, so
  * the panel's scroll box cannot clip it; it flips above the trigger when there
  * is no room below; long lists grow a filter; and the keyboard model is the
- * one a native select taught everybody — arrows, Home/End, PageUp/PageDown,
+ * one a native select taught everybody: arrows, Home/End, PageUp/PageDown,
  * type-to-jump, Enter or Space to choose, Escape to back out. */
 
 export interface SelectOption {

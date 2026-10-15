@@ -54,7 +54,7 @@ const Ctx = React.createContext<Scenario | null>(null)
 
 /* Hydration, as an external store rather than a `useState` + `useEffect` flag.
    `getServerSnapshot` returns false and `getSnapshot` returns true, and React
-   swaps between them exactly once, when hydration finishes — which is the
+   swaps between them exactly once, when hydration finishes. That is the
    question, answered by the mechanism built for it.
 
    The alternative is reading localStorage in an effect and calling setState,
@@ -86,7 +86,7 @@ export interface ScenarioProviderProps {
   /**
    * Whether the CONTROLS mount. Defaults to "not a production build".
    *
-   * Context is always provided regardless — consumers read it in every build,
+   * Context is always provided regardless. Consumers read it in every build,
    * and a deployed review build should still honour a scenario query string.
    * Production builds resolve to a stub panel through the "production" export
    * condition, so the panel's bytes never ship.
@@ -132,7 +132,7 @@ export function ScenarioProvider({
 
   /* Server and first client render both produce the config's defaults, so the
      markup matches and nothing has to be suppressed. Storage and the URL are
-     layered on from the render AFTER hydration — a read, not a write.
+     layered on from the render AFTER hydration: a read, not a write.
 
      A query string that names any scenario key is the whole scenario: the
      storage layer is skipped, so this browser's leftovers cannot leak in. */
@@ -239,7 +239,7 @@ export function ScenarioProvider({
   const context = React.useMemo(() => m.contextOf(snapshot), [m, snapshot])
 
   /* Fields that mirror themselves onto the DOM, for CSS that reads attributes
-     rather than props — the generalisation of a hand-rolled density toggle. */
+     rather than props: the generalisation of a hand-rolled density toggle. */
   React.useEffect(() => {
     if (typeof document === "undefined") return
     /* What the page had before, so unmounting puts it back rather than
@@ -271,7 +271,7 @@ export function ScenarioProvider({
   const env = React.useMemo<Env>(() => ({ path, ...extraEnv }), [path, extraEnv])
 
   /* Every mutation writes the FULL next edit layer rather than a patch, so
-     nothing calls setState from inside another setState's updater — which
+     nothing calls setState from inside another setState's updater, which
      React is free to run twice. */
   const api = React.useMemo<Scenario>(() => {
     const go = (machineId: string, stateId: string) => {
@@ -314,7 +314,7 @@ export function ScenarioProvider({
         if (owner) {
           if (isDev) {
             console.warn(
-              `[prototype-machine] "${key}" is written by the "${owner}" machine, not set directly. Use go("${owner}", …) — refusing this is what stops half-written tuples existing.`
+              `[prototype-machine] "${key}" is written by the "${owner}" machine, not set directly. Use go("${owner}", …). Refusing this is what stops half-written tuples existing.`
             )
           }
           continue

@@ -53,7 +53,7 @@ export function summarize(machine: CompiledMachine, snapshot: Snapshot): string 
     const at = has(snapshot.machines, id) ? snapshot.machines[id] : def.initial
     const name = def.states[at]?.label
     const changed = at !== def.initial ? `  (default ${def.initial})` : ""
-    lines.push(`${def.label ?? id}: ${at}${name && name !== at ? ` — ${name}` : ""}${changed}`)
+    lines.push(`${def.label ?? id}: ${at}${name && name !== at ? ` "${name}"` : ""}${changed}`)
   }
   for (const [id, def] of Object.entries(fields)) {
     const value = has(snapshot.fields, id) ? snapshot.fields[id] : def.default

@@ -88,13 +88,21 @@ export interface ShadowLayer {
  * and take them away again when it is not. Client-only: on the server and on
  * the first client render it returns null, so the markup always matches.
  */
-export function useShadowLayer(active: boolean, zIndex: number, nonce?: string): ShadowLayer | null {
+export function useShadowLayer(
+  active: boolean,
+  zIndex: number,
+  nonce?: string,
+  /** Which tool owns this layer, as `data-pm-layer`. The panel and a state
+   *  switcher each get their own host, so a test can tell them apart. */
+  kind: "panel" | "switcher" = "panel",
+): ShadowLayer | null {
   const [layer, setLayer] = React.useState<ShadowLayer | null>(null)
 
   useClientLayoutEffect(() => {
     if (!active || typeof document === "undefined" || !document.body) return
     const host = document.createElement(HOST_TAG)
     host.setAttribute("data-prototype-machine", "")
+    host.setAttribute("data-pm-layer", kind)
     /* Not part of the product, and not something a translation extension or
        a screenshot-diff tool should rewrite. */
     host.setAttribute("translate", "no")
@@ -139,7 +147,7 @@ export function useShadowLayer(active: boolean, zIndex: number, nonce?: string):
       host.remove()
       setLayer(null)
     }
-  }, [active, nonce])
+  }, [active, nonce, kind])
 
   /* Restacking does not need a new host. */
   useClientLayoutEffect(() => {

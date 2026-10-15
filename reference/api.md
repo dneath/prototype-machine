@@ -1,6 +1,6 @@
 # API reference
 
-**Part of [prototype-machine](../SKILL.md)** — targets prototype-machine 0.10.0.
+**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.11.0.
 
 For *how to model* a scenario space, read [recipes.md](recipes.md) first. This file is
 the exhaustive surface.
@@ -13,9 +13,13 @@ the exhaustive surface.
 - [Actions](#actions)
 - [ScenarioProvider](#scenarioprovider)
 - [ScenarioPanel](#scenariopanel)
+- [StateBench](#statebench)
+- [StateSwitcher](#stateswitcher)
+- [useStateParam](#usestateparam)
 - [useScenario](#usescenario)
 - [The core entry](#the-core-entry)
 - [Errors and warnings](#errors-and-warnings)
+- [Keyboard](#keyboard)
 
 ---
 
@@ -29,7 +33,7 @@ const scenario = defineMachine({ machines, fields, derive, actions })
 | --- | --- | --- |
 | `machines` | `Record<string, MachineDef>` | Journeys. Each puts its current state id into context under its own name. |
 | `fields` | `Record<string, AnyField>` | Independent axes. |
-| `derive` | `Record<string, (ctx) => value>` | Computed values. Never stored, never in a URL. `ctx` is fully typed and contains machines, tuples and fields — but not other derived values. |
+| `derive` | `Record<string, (ctx) => value>` | Computed values. Never stored, never in a URL. `ctx` is fully typed and contains machines, tuples and fields, but not other derived values. |
 | `actions` | `ActionDef[]` | Buttons. Ungrouped ones render last. |
 
 Everything is validated at module load. Types are inferred, so `useScenario(scenario)`
@@ -69,7 +73,7 @@ Three distinct meanings, and the difference matters:
 | `{ a: [] }` | `a` is a dead end. Deliberate, not "unspecified". |
 
 Staying put is always legal. An illegal move is refused by `go()` with a console
-warning naming the legal moves, and its pill renders present but disabled — the shape of
+warning naming the legal moves, and its pill renders present but disabled, so the shape of
 the journey stays visible.
 
 A state that nothing can reach produces a boot-time warning rather than an error,
@@ -101,7 +105,7 @@ Every field takes the common keys below and a **required** `default`.
 
 `dom: { attribute, target? }` mirrors the value onto `<html>` (or `"body"`) as an
 attribute, so plain CSS can read it. On unmount the attribute goes back to whatever
-the page had before — removed if it had nothing, restored if the page's own markup
+the page had before: removed if it had nothing, restored if the page's own markup
 set it.
 
 ### Presets
@@ -122,7 +126,7 @@ fields: {
 | Set | Values |
 | --- | --- |
 | text | Empty, whitespace only, one character, long, 2,000 characters, an unbreakable compound and URL, a long email, right-to-left Arabic, mixed-direction text, CJK, emoji with ZWJ and skin-tone sequences, diacritics, HTML markup, newlines |
-| numbers | 0, 1, -1, `0.1 + 0.2`, 99, 100, 999, 1,000, 1M, `Number.MAX_SAFE_INTEGER` — only those inside the field's `min`/`max` |
+| numbers | 0, 1, -1, `0.1 + 0.2`, 99, 100, 999, 1,000, 1M, `Number.MAX_SAFE_INTEGER`. Only those inside the field's `min`/`max`. |
 
 A preset the field would refuse to hold (outside its range, wrong type) throws at boot.
 Use `multiline: true` with the text set, or the "Lines" preset loses its newlines to a
@@ -130,8 +134,8 @@ single-line input.
 
 A boolean reads `1`, `0`, `true`, `false`, `on` or `off` from a URL, and writes `1` or `0`.
 
-A field value that fails validation — wrong type, an enum option that no longer exists,
-a number outside `min`/`max` — is dropped from storage and URLs rather than reaching
+A field value that fails validation (wrong type, an enum option that no longer exists,
+a number outside `min`/`max`) is dropped from storage and URLs rather than reaching
 context. Storage outlives configs.
 
 ## Actions
@@ -150,11 +154,11 @@ section's rows; without it the button renders last, after the panel's `children`
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `machine` | `Machine` | — | **Required.** |
-| `storageKey` | `string` | — | **Required.** Version it when a field changes meaning. |
+| `machine` | `Machine` | None | **Required.** |
+| `storageKey` | `string` | None | **Required.** Version it when a field changes meaning. |
 | `path` | `string \| null` | `null` | Current route, for `when` predicates. |
-| `navigate` | `(to: string) => void` | — | Router push, for actions. |
-| `env` | `Record<string, unknown>` | — | Merged into what `when` sees. |
+| `navigate` | `(to: string) => void` | None | Router push, for actions. |
+| `env` | `Record<string, unknown>` | None | Merged into what `when` sees. |
 | `enabled` | `boolean` | `NODE_ENV !== "production"` | Whether the controls mount. Context is provided either way. |
 | `syncUrl` | `boolean` | `false` | Keep the address bar in step with the scenario (`replaceState`, other params kept). Off: scenario params are read once, then removed. |
 | `syncTabs` | `boolean` | `false` | Follow scenario changes saved by other tabs on the same `storageKey`. |
@@ -186,13 +190,13 @@ In development, two providers sharing a `storageKey` log a warning.
 | `title` | `string` | `"Prototype controls"` |
 | `zIndex` | `number` | `2147483000` |
 | `draggable` | `boolean` | `true` |
-| `inset` | `{ name: string; value: string }` | — |
-| `nonce` | `string` | — |
+| `inset` | `{ name: string; value: string }` | None |
+| `nonce` | `string` | None |
 | `enabled` | `boolean` | the provider's |
 | `tools` | `boolean` | `true` |
-| `children` | `ReactNode` | — |
+| `children` | `ReactNode` | None |
 
-`children` renders after the rows, for anything the config cannot express — a
+`children` renders after the rows, for anything the config cannot express: a
 theme switch bound to the host's own provider, a link to the design file. It renders
 inside the panel's shadow root, where the host's stylesheets do not reach, so build it
 from the exported `Row`, `Pill` and `Select` rather than from the product's components.
@@ -203,7 +207,7 @@ The panel never takes on the look of the product it sits in. It renders through 
 portal into a shadow root on a `<prototype-machine>` element appended to `<body>`:
 
 - **No host selector reaches it.** A reset that restyles every `button` or `select`, a
-  `* { font-family }` rule, Tailwind's preflight, a dark-mode class — none of them match
+  `* { font-family }` rule, Tailwind's preflight, a dark-mode class: none of them match
   inside the shadow root.
 - **Inheritance is cut.** `:host` resets every inherited property (font, colour,
   letter-spacing, text-transform, direction, visibility, cursor, colour-scheme) with
@@ -214,8 +218,8 @@ portal into a shadow root on a `<prototype-machine>` element appended to `<body>
   `body > * { display: flex; transform: … }` cannot move or hide it.
 - **Its stacking is its own.** Being on `<body>` rather than inside the app means no
   ancestor `transform` turns `position: fixed` into "fixed to that wrapper", and the
-  default `zIndex` keeps it above the product's modals and toasts — the states you most
-  need to drive while they are open. Native top-layer elements (`<dialog>.showModal()`,
+  default `zIndex` keeps it above the product's modals and toasts, which are the states you
+  most need to drive while they are open. Native top-layer elements (`<dialog>.showModal()`,
   the Popover API) still draw above it.
 - **Its events stay inside.** Keystrokes, pointer and focus events stop at the host
   element, so a host hotkey does not fire while you type in the panel, and a modal
@@ -226,7 +230,9 @@ portal into a shadow root on a `<prototype-machine>` element appended to `<body>
 
 Where a browser cannot attach a shadow root the panel falls back to the same element
 with its stylesheet in `<head>`; every rule is still `pm-` prefixed and stated
-explicitly. Tests that query the panel should search `document.querySelector("prototype-machine").shadowRoot`.
+explicitly. Each tool has its own host element, marked with `data-pm-layer` (`"panel"` or `"switcher"`).
+Tests that query the panel should search
+`document.querySelector('prototype-machine[data-pm-layer="panel"]').shadowRoot`.
 
 ### Dropdowns
 
@@ -246,7 +252,7 @@ long preset list render as a button that opens a listbox.
 
 | Button | Does |
 | --- | --- |
-| Copy | Copies the scenario as text — every control's value, changed ones marked with their default, then the query string that reproduces it. Paste it into a bug report or an agent's prompt. |
+| Copy | Copies the scenario as text: every control's value, changed ones marked with their default, then the query string that reproduces it. Paste it into a bug report or an agent's prompt. |
 | Reset | Resets the scenario, with a count of how many values are off their default. Disabled when nothing is. |
 | Pin | Keeps the panel open through clicks outside. |
 | Close | Collapses to the launcher. |
@@ -322,7 +328,7 @@ with `group: null` for the ungrouped section.
 panel by its header; buttons and inputs inside the header are excluded, so a button click
 is never a drag.
 
-**Release within 140px of a corner and it takes the corner** — measured diagonally, so a
+**Release within 140px of a corner and it takes the corner**, measured diagonally, so a
 drop that is 100px out on both axes is 141px away and stays put. A dashed outline
 previews the corner while you drag, and the settle is animated once.
 
@@ -337,9 +343,117 @@ Under `` `${storageKey}:pm-panel-position` ``. A bare `{x, y}` from before snapp
 existed is migrated to a free placement rather than discarded.
 
 Movement under 8px is a click, not a drag. Arrow keys nudge by 8px (32 with shift) while
-the handle has focus, and always produce a free placement — someone pressing an arrow key
+the handle has focus, and always produce a free placement, because someone pressing an arrow key
 is aiming. Double-click the handle to send it back to `position` and forget the stored
 value. `draggable={false}` turns all of it off.
+
+## StateBench
+
+```tsx
+import { StateBench } from "prototype-machine"
+
+<StateBench states={STATES} missing={MISSING} initial="typical" width={880} label="Request log states">
+  {(state) => <RequestLog {...FIXTURES[state]} />}
+</StateBench>
+```
+
+One component in each of its states, with a switcher. It needs no provider. For the
+workflow, read [bench.md](bench.md).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `states` | `Record<string, string \| { label?, note? }>` | None | **Required.** Every state, in switcher order. The key is the URL value. A string is the label. `note` is the tooltip. |
+| `children` | `(state) => ReactNode` | None | **Required.** Renders the real component in one state. Called for the active state only. |
+| `missing` | same shape as `states` | None | States the design shows but the code cannot reach. Listed and disabled. Never rendered. |
+| `initial` | a key of `states` | the first key | Shown when the URL names no state, or names one that is not known. |
+| `param` | `string` | `"__state"` | The search parameter. Exported as `STATE_PARAM`. |
+| `width` | `number \| string` | the page's width | As wide as the component is in production. A number is pixels. Capped at `100%`. |
+| `label` | `string` | `"States"` | The switcher's accessible name. |
+| `placement` | `"bottom" \| "top"` | `"bottom"` | The edge the switcher sits on, centered. |
+| `offset` | `number \| string` | `24px` | Distance from that edge. A string is any CSS length, such as `"calc(var(--banner-h) + 8px)"`. |
+| `zIndex` | `number` | `2147483000` | Stacking order of the switcher. |
+| `nonce` | `string` | None | Set on the switcher's `<style>`, for a strict CSP. |
+| `enabled` | `boolean` | `NODE_ENV !== "production"` | Whether the switcher mounts. The state renders either way. |
+
+**The URL is the source of truth.** A click writes `?__state=<id>` with `replaceState`.
+Other parameters and the hash are kept. Back and forward are followed. A click always
+writes the parameter, also for `initial`, so a link means the same thing after `initial`
+changes.
+
+**Nothing renders until the URL can be read.** On the server and during hydration the
+container is empty, so no state's fixtures show for one frame by mistake.
+
+**Each state mounts fresh.** The child is keyed by the state id, so a seeded cache or a
+held request belongs to the state that set it up.
+
+**The page's markup is minimal:**
+
+```html
+<div data-state-bench data-state="empty" style="width: 880px; max-width: 100%">...</div>
+<div aria-hidden="true" data-state-bench-spacer style="height: 88px"></div>
+```
+
+The container sets only `width` and `max-width`. The spacer is on the switcher's side, so
+the bar never covers the end of a long component. Without the switcher there is no spacer.
+
+**The switcher** renders in its own shadow root (`data-pm-layer="switcher"`), apart from
+the panel. It is a `<nav>` with the `label` as its name and a button for each state, with
+`aria-pressed` on the current one. A missing state is `aria-disabled`, struck through, and
+says "Not in the code yet" with its note, as a tooltip and to screen readers. On a narrow
+screen the bar scrolls sideways and keeps the current state in view. **Hide** removes it
+until the page reloads.
+
+**In production** (the `production` export condition) the main entry renders the state
+the URL names, without the switcher, and the switcher's code is not shipped.
+`prototype-machine/panel` keeps the switcher for a review build.
+
+## StateSwitcher
+
+```tsx
+<ScenarioProvider machine={scenario} storageKey="my-prototype-v1" syncUrl>
+  <App />
+  <ScenarioPanel />
+  <StateSwitcher machine="data" />
+</ScenarioProvider>
+```
+
+The bench's bar, bound to one machine of the scenario. It reads and writes through the
+provider, so storage, the URL and the panel stay in step. With `syncUrl` on the provider,
+every state is a link.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `machine` | machine id | **Required.** |
+| `label` | `string` | the machine's `label` |
+| `placement` | `"bottom" \| "top"` | `"bottom"` |
+| `offset` | `number \| string` | `24px` |
+| `zIndex` | `number` | `2147483000` |
+| `nonce` | `string` | None |
+| `enabled` | `boolean` | the provider's |
+
+- A move the journey does not allow from the current state is disabled, with the same
+  reason the panel gives.
+- When the machine's `when` hides it, the bar hides too.
+- A `machine` that names no machine warns once and renders nothing.
+- In production the main entry renders nothing.
+
+## useStateParam
+
+```ts
+const [state, setState] = useStateParam(["loading", "empty", "typical"], { initial: "typical" })
+```
+
+The hook under `StateBench`, for a bench with its own layout.
+
+| Option | Type | Default |
+| --- | --- | --- |
+| `initial` | one of the ids | **Required.** |
+| `param` | `string` | `"__state"` |
+| `missing` | `string[]` | `[]` |
+
+`state` is `null` until the URL can be read. `setState` writes with `replaceState` and
+keeps other parameters and the hash. A URL value that is not in the ids warns and gives
+`initial`.
 
 ## useScenario
 
@@ -374,7 +488,7 @@ state ids and field values are checked.
 
 Misspelled ids in `go` and `set` warn with a "did you mean" suggestion.
 
-These names are reserved and a config may not use them for context keys — `compile`
+These names are reserved and a config may not use them for context keys. `compile`
 throws if it tries.
 
 ## The core entry
@@ -388,13 +502,13 @@ No React import anywhere in it. Use it in tests, scripts, or a non-React adapter
 `sectionsOf`, `visible`, `warn`, `has`, `suggest`, `describe`, `summarize`,
 `changedCount`, `presetsOf`, `STRESS_TEXT`, `STRESS_NUMBERS`, `isDate`, `clearStorage`,
 `fromSearch`, `readStorage`, `resolve`, `toSearch`, `mergeSearch`, `diffFromDefaults`,
-`shapeOf`, `writeStorage(machine, key, snapshot)` — plus every type in the schema. The React entry additionally
-exports the snapping primitives — `snapTarget`, `cornerPosition`, `clampToViewport`,
-`useDrag` — which are pure and testable without a DOM.
+`shapeOf`, `writeStorage(machine, key, snapshot)`, plus every type in the schema. The React entry additionally
+exports the snapping primitives (`snapTarget`, `cornerPosition`, `clampToViewport`,
+`useDrag`), which are pure and testable without a DOM.
 
 `describe(machine)` prints a text outline of the scenario space (states, legal moves,
 dead ends, fields, actions). `summarize(machine, snapshot)` prints the scenario on
-screen — what the panel's Copy button writes — and `changedCount(machine, snapshot)`
+screen (what the panel's Copy button writes), and `changedCount(machine, snapshot)`
 counts the values off their default. `writeStorage` saves only values that differ from their
 defaults, tagged with `shapeOf(machine)`; a stored shape that no longer matches is ignored.
 
@@ -419,6 +533,13 @@ Thrown at module load, by `compile`:
 - a preset the field would refuse to hold, or a preset with an empty label
 - duplicate action ids
 
+Thrown on render, by `<StateBench>`:
+
+- no `states`
+- an `initial` that is not one of its states, with a suggestion
+- an id in both `states` and `missing`
+- a state with an empty label
+
 Console warnings at runtime:
 
 - a state nothing can reach
@@ -427,6 +548,9 @@ Console warnings at runtime:
 - a URL parameter that does not name a valid state or value
 - `navigate` with no `navigate` prop
 - an action whose `run` throws (the panel stays up)
+- a `?__state=` value that is not a bench state (with a suggestion), or that names a
+  missing state
+- a `<StateSwitcher machine>` that names no machine
 
 The errors are worded to name the fix. They are the main way the package teaches the
 model, so do not swallow them.
@@ -434,7 +558,7 @@ model, so do not swallow them.
 ## Keyboard
 
 The panel opens **only** from a click on its launcher button. There is no global shortcut
-that reveals it, and no prop to bind one — a dev tool should not claim a key on a page it
+that reveals it, and no prop to bind one. A dev tool should not claim a key on a page it
 is only visiting, and a reviewer who has not been told a shortcut exists cannot use it
 anyway.
 
@@ -444,6 +568,11 @@ anyway.
 | `↓` `↑` on a dropdown | Open it |
 | `↑` `↓` `←` `→` | Nudge the panel 8px while its handle has focus |
 | `shift` + arrows | Nudge 32px |
+| `←` `→` `↑` `↓` in a switcher bar | Previous or next state. Skips disabled states and wraps. |
+| `Home` `End` in a switcher bar | First or last state |
+
+The switcher's keys work only while focus is inside the bar. They ignore `ctrl`, `alt`,
+`meta` and `shift`, so browser and system shortcuts still work.
 
 Closing returns focus to the launcher, so a keyboard user does not have to start over
 from `<body>`.

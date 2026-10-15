@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.11.0
+
+A bench shows one component in every state its code can reach, one URL per state.
+
+### Added
+- `StateBench`: renders the real component in each of its `states` on a scratch page,
+  with a switcher bar. The state lives in `?__state=` (`STATE_PARAM`), written with
+  `replaceState`, so a reload keeps it, a link opens it, and a test can loop over it.
+  Each state mounts fresh. The container sets only `width`.
+- `missing` on `StateBench`: states the design shows but the code cannot reach. Listed
+  struck through and disabled, with "Not in the code yet" and the note. Never rendered.
+- `StateSwitcher`: the same bar for one machine of a scenario, inside the provider.
+  Illegal moves are disabled with the panel's reason.
+- `useStateParam(ids, { initial, param, missing })`: the URL hook under the bench.
+- The switcher bar: dark and neutral, in its own shadow root (`data-pm-layer="switcher"`),
+  a labelled `nav` of `aria-pressed` buttons at the bottom center (`placement="top"` and
+  `offset` move it). Scrolls sideways on narrow screens and keeps the current state in
+  view. Arrow keys, `Home` and `End` move between states only while focus is in the bar.
+  A Hide button removes it until reload. Forced-colors styles included.
+- `reference/bench.md`: the bench workflow, adapted from Jakub Krehel's state-machine
+  skill. Recipe 9 in `recipes.md`.
+
+### Changed
+- Each shadow host carries `data-pm-layer` (`"panel"` or `"switcher"`). Tests that found
+  the panel with `document.querySelector("prototype-machine")` should add
+  `[data-pm-layer="panel"]`.
+- The production entry renders a bench's current state without the switcher, and
+  `StateSwitcher` as nothing.
+- Recipe 2: hold loading still, branch where the data comes in, use product-shaped data.
+- Docs and messages no longer use em dashes.
+
+### Not adopted from the source skill
+- Page-wide keys (`←` `→`, `1` to `9`, `H`). The package binds no keyboard shortcut.
+- A 14% white fill for the active state. It is about 1.5:1 against the bar, below the
+  3:1 of WCAG 2.1 SC 1.4.11. The active button is white with dark text.
+
 ## 0.10.0
 
 The panel now owns its styling completely, its dropdowns work everywhere, and it can

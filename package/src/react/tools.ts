@@ -4,9 +4,9 @@ import * as React from "react"
 
 /* Page tools: stress the host page as a whole, whatever the scenario says.
  *
- * Every layout has three questions it is rarely asked until it ships — does it
+ * Every layout has three questions it is rarely asked until it ships: does it
  * survive right-to-left, does it survive someone's enlarged text, and what
- * does it look like mid-animation — and none of them belongs in a scenario
+ * does it look like mid-animation? None of them belongs in a scenario
  * config, because they are not states of the product. They are states of the
  * person looking at it.
  *
@@ -62,7 +62,7 @@ function useDirection(dir: Direction) {
 }
 
 /**
- * The root font size, scaled from whatever the page computes it as — so a
+ * The root font size, scaled from whatever the page computes it as, so a
  * product that sets `html { font-size: 62.5% }` is scaled from its own base,
  * the way a browser's text-size setting would, instead of being reset to 16px.
  * Layouts in rem and em respond; layouts in px do not, which is the finding.

@@ -11,9 +11,9 @@
  * foreign is how it stays legible as scaffolding.
  *
  * It lives inside a shadow root, so no selector in the host page can reach it.
- * What a shadow boundary does NOT stop is inheritance — `color`, `font`,
+ * What a shadow boundary does NOT stop is inheritance. `color`, `font`,
  * `direction`, `letter-spacing`, `cursor`, `visibility` and friends all flow
- * across it from <body> — and custom properties, which inherit too. So `:host`
+ * across it from <body>, and so do custom properties. So `:host`
  * resets everything inheritable to a stated value, and every `--pm-*` token is
  * declared here rather than read from outside.
  *
@@ -82,7 +82,7 @@ const CSS = `
   --pm-hover: #2b2b2b;
   --pm-accent: #7410ff;
   --pm-danger: #fca5a5;
-  /* color-scheme decides how the browser paints native parts — scrollbars,
+  /* color-scheme decides how the browser paints native parts: scrollbars,
      the date picker, number spinners. Stated, never inherited. */
   color-scheme: dark;
   position: fixed;
@@ -354,8 +354,8 @@ const CSS = `
   color: #171717;
 }
 .pm-pill:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-/* An illegal move. Visible, so the shape of the journey is legible, but dead —
-   the point is that you can see it is not available from here. */
+/* An illegal move. Visible, so the shape of the journey is legible, but dead.
+   The point is that you can see it is not available from here. */
 .pm-pill[aria-disabled="true"] {
   opacity: 0.35;
   cursor: not-allowed;
@@ -523,6 +523,74 @@ const CSS = `
 .pm-empty { color: var(--pm-muted); }
 
 
+/* The state switcher. One bar, centred on an edge, opaque so nothing behind
+   it shows through. The active state is inverted, as in the panel's pills:
+   a 14% white fill reads at about 1.5:1 against the bar, and a selected
+   state needs 3:1 (WCAG 1.4.11). */
+.pm-switcher {
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: calc(100vw - 32px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--pm-bg);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pm-switcher::-webkit-scrollbar { display: none; }
+.pm-switcher-bottom { bottom: max(24px, env(safe-area-inset-bottom)); }
+.pm-switcher-top { top: max(24px, env(safe-area-inset-top)); }
+.pm-switch {
+  flex: none;
+  min-height: 28px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: var(--pm-text);
+  cursor: pointer;
+}
+.pm-switch:hover:not([aria-pressed="true"]):not([aria-disabled="true"]) {
+  background: var(--pm-hover);
+  color: var(--pm-fg);
+}
+.pm-switch[aria-pressed="true"] {
+  background: var(--pm-fg);
+  color: #171717;
+}
+.pm-switch[aria-disabled="true"] {
+  color: var(--pm-muted);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+.pm-switch:focus-visible, .pm-switch-hide:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pm-switch-sep {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--pm-line-soft);
+}
+.pm-switch-hide {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+.pm-switch-hide:hover { background: var(--pm-hover); color: var(--pm-fg); }
+
 .pm-sr {
   position: absolute;
   width: 1px; height: 1px;
@@ -539,7 +607,9 @@ const CSS = `
 /* Windows High Contrast and friends: the panel's greys vanish, so restate the
    edges in system colours. */
 @media (forced-colors: active) {
-  .pm-panel, .pm-launcher, .pm-popover { border: 1px solid CanvasText; }
+  .pm-panel, .pm-launcher, .pm-popover, .pm-switcher { border: 1px solid CanvasText; }
+  .pm-switch[aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  .pm-switch[aria-disabled="true"] { color: GrayText; }
   .pm-pill[aria-pressed="true"], .pm-option[data-active="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   .pm-pill, .pm-trigger, .pm-text, .pm-number, .pm-textarea, .pm-action { border: 1px solid CanvasText; }
 }

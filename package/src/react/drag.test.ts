@@ -20,7 +20,7 @@ describe("drag arithmetic", () => {
   it("computes position from the rect captured at pointerdown, not from deltas", () => {
     const start = dragStart({ x: 150, y: 250 }, rect)
     expect(dragOffset(start, { x: 160, y: 250 })).toEqual({ x: 110, y: 200 })
-    /* The same pointer twice must give the same answer — the whole point of
+    /* The same pointer twice must give the same answer. That is the whole point of
        not accumulating. */
     expect(dragOffset(start, { x: 160, y: 250 })).toEqual({ x: 110, y: 200 })
     expect(dragOffset(start, { x: 150, y: 250 })).toEqual({ x: 100, y: 200 })

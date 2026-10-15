@@ -5,7 +5,7 @@ import * as React from "react"
 /* Dragging the panel out of the way, which a control panel pinned to a corner
  * eventually needs: the thing it is meant to help you review is underneath it.
  *
- * The pure half of this file is deliberately separable from the hook — it is
+ * The pure half of this file is deliberately separable from the hook. It is
  * arithmetic over rects and pointers, and it is where the two bugs that make
  * hand-rolled dragging feel broken actually live:
  *
@@ -91,7 +91,7 @@ export function hasMoved(start: DragStart, pointer: Point): boolean {
  * Keep the panel on screen.
  *
  * Called from the move handler, from a resize listener, on mount, and whenever
- * the panel's own size changes — a position restored from a wider monitor is
+ * the panel's own size changes. A position restored from a wider monitor is
  * off-screen, and a panel dragged to the bottom edge while collapsed would hang
  * off it once expanded.
  */
@@ -133,7 +133,7 @@ export function cornerPosition(
  *
  * Straight-line distance to each corner's anchored position, nearest wins, and
  * nothing wins beyond `distance`. Keeping the whole snap rule in one pure
- * function is what lets it be tested without a DOM — and the rule is the part
+ * function is what lets it be tested without a DOM, and the rule is the part
  * that decides whether the gesture feels right.
  */
 export function snapTarget(
@@ -207,7 +207,7 @@ export function readPlacement(storageKey: string): Placement | null {
       return { kind: "free", x: (parsed as Point).x, y: (parsed as Point).y }
     }
     /* A bare {x, y} is what versions before snapping wrote. Migrate it rather
-       than dropping it — somebody has the panel where they want it. */
+       than dropping it: somebody has the panel where they want it. */
     if (kind === undefined && isPoint(parsed)) {
       return { kind: "free", x: (parsed as Point).x, y: (parsed as Point).y }
     }
@@ -251,7 +251,7 @@ const NOT_A_HANDLE = [
 export function isDragTarget(target: EventTarget | null, root: Element | null): boolean {
   if (!(target instanceof Element) || !root || !root.contains(target)) return false
   /* The handle never excludes ITSELF. When the panel is collapsed the handle
-     is the launcher, which is a <button> — and the icon inside it is what the
+     is the launcher, which is a <button>, and the icon inside it is what the
      pointer actually lands on, so a bare closest() test would reject the one
      surface that is entirely meant to be draggable. */
   const blocked = target.closest(NOT_A_HANDLE)
@@ -286,7 +286,7 @@ export interface UseDragOptions {
   /** Namespaces the stored placement. Usually the provider's storageKey. */
   storageKey: string
   enabled: boolean
-  /** Ref to the element being moved — measured for clamping and snapping. */
+  /** Ref to the element being moved. Measured for clamping and snapping. */
   elementRef: React.RefObject<HTMLElement | null>
 }
 
@@ -353,12 +353,12 @@ export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): Us
   }, [enabled, storageKey, measure, setPlacement])
 
   /* Only a FREE placement needs clamping. A corner placement is rendered by its
-     CSS class, so the browser keeps it anchored through a resize for free —
+     CSS class, so the browser keeps it anchored through a resize for free,
      which is most of the reason placements are stored as corners at all.
 
      Two triggers: the window changed, or the panel did. The panel's own size
      matters because one dragged to the bottom edge while collapsed would hang
-     off it once expanded — hence the ResizeObserver rather than a measurement
+     off it once expanded. Hence the ResizeObserver rather than a measurement
      taken during render. */
   const isFree = placement?.kind === "free"
   React.useEffect(() => {
@@ -384,7 +384,7 @@ export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): Us
   }, [enabled, isFree, measure, elementRef, setPlacement])
 
   /* The settle transition lives for exactly one animation, then gets out of the
-     way — leaving it on would animate a resize-driven clamp too. */
+     way. Leaving it on would animate a resize-driven clamp too. */
   React.useEffect(() => {
     if (!settling) return
     const id = window.setTimeout(() => setSettling(false), 220)
@@ -460,7 +460,7 @@ export function useDrag({ storageKey, enabled, elementRef }: UseDragOptions): Us
       setSnapPreview(null)
       blockNextClick(el)
 
-      /* Written once, at the end of the gesture, rather than on every move —
+      /* Written once, at the end of the gesture, rather than on every move,
          and this is where a near-miss becomes a corner. */
       const size = measure()
       const view = viewport()

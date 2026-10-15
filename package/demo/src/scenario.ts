@@ -54,7 +54,7 @@ export const scenario = defineMachine({
     },
 
     /* VIEW CONTROLS. No `transitions` key, so every state is one click from
-       every other — which is right, because these are not journeys. */
+       every other, which is right, because these are not journeys. */
     role: {
       label: "Role",
       group: "Viewing as",
@@ -90,7 +90,7 @@ export const scenario = defineMachine({
       },
     },
     /* DELIBERATELY AWKWARD, and only on one route. Nine states, long labels
-       and a dense transition map — a stress case for how the panel lays out a
+       and a dense transition map: a stress case for how the panel lays out a
        big row of pills with most of them disabled. Kept out of the way because
        it is a test fixture, not a model worth copying. */
     review: {
@@ -165,7 +165,7 @@ export const scenario = defineMachine({
     },
     /* A HOSTILE HOST. Turns on demo.css rules that restyle every button,
        input and select on the page, force a serif font and a light scheme,
-       transform the layout wrapper and open a modal at z-index 9999 — the
+       transform the layout wrapper and open a modal at z-index 9999. These are the
        things a real product does that used to bleed into the panel. */
     hostile: {
       type: "boolean",

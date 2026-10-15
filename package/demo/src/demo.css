@@ -85,3 +85,24 @@ pre {
 [data-hostile="true"] div { box-sizing: content-box; }
 [data-hostile="true"] #root { transform: translateZ(0) rotate(0.5deg); }
 [data-hostile="true"] body > * { position: relative; z-index: 1; display: flex; }
+
+/* The app's own request log styles. The bench page inherits them, which is
+   the point: it adds no styles of its own. */
+.bench { padding: 40px 24px; }
+.log { border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 10px; overflow: hidden; background: Canvas; }
+.log-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(128, 128, 128, 0.3); }
+.log-head h2 { margin: 0; font-size: 15px; flex: 1; }
+.log-head button, .log-message button, .log-foot button {
+  padding: 6px 10px; border: 1px solid rgba(128, 128, 128, 0.5); border-radius: 6px;
+  background: transparent; color: inherit; font: inherit; font-size: 13px; cursor: pointer;
+}
+.log-updating { font-size: 12px; opacity: 0.7; }
+.log table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.log th, .log td { padding: 8px 16px; text-align: left; border-bottom: 1px solid rgba(128, 128, 128, 0.18); white-space: nowrap; }
+.log th { font-weight: 600; font-size: 12px; opacity: 0.75; }
+.log .num { text-align: right; font-variant-numeric: tabular-nums; }
+.log [data-result="400"], .log [data-result="429"] { color: #b91c1c; }
+.log-skeleton { height: 14px; margin: 14px 16px; border-radius: 4px; background: rgba(128, 128, 128, 0.18); }
+.log-message { padding: 32px 16px; }
+.log-message p { margin: 0 0 8px; }
+.log-foot { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; font-size: 13px; }

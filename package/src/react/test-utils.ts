@@ -4,7 +4,7 @@ import { type BoundFunctions, type queries, within } from "@testing-library/reac
    are the same queries, scoped to that root. Test-only: no entry imports it. */
 
 export function panelRoot(): ShadowRoot {
-  const host = document.querySelector("prototype-machine")
+  const host = document.querySelector('prototype-machine[data-pm-layer="panel"]')
   if (!host || !host.shadowRoot) throw new Error("The panel's host element is not mounted.")
   return host.shadowRoot
 }
@@ -22,5 +22,24 @@ export const ui: Queries = new Proxy({} as Queries, {
 
 /** `ui`, but tolerant of the host not existing yet (for `queryBy*`). */
 export function panelMounted(): boolean {
-  return !!document.querySelector("prototype-machine")?.shadowRoot
+  return !!document.querySelector('prototype-machine[data-pm-layer="panel"]')?.shadowRoot
+}
+
+/** The state switcher's shadow root. */
+export function switcherRoot(): ShadowRoot {
+  const host = document.querySelector('prototype-machine[data-pm-layer="switcher"]')
+  if (!host || !host.shadowRoot) throw new Error("The switcher's host element is not mounted.")
+  return host.shadowRoot
+}
+
+/** `screen`, inside the state switcher. */
+export const bar: Queries = new Proxy({} as Queries, {
+  get(_target, key) {
+    const queries = within(switcherRoot() as unknown as HTMLElement) as unknown as Record<PropertyKey, unknown>
+    return queries[key]
+  },
+})
+
+export function switcherMounted(): boolean {
+  return !!document.querySelector('prototype-machine[data-pm-layer="switcher"]')?.shadowRoot
 }

@@ -1,4 +1,4 @@
-/* prototype-machine — the production entry.
+/* prototype-machine: the production entry.
  *
  * Bundlers pick this file under the "production" export condition. The
  * provider and hooks still work, so a scenario in storage or the query string
@@ -15,9 +15,38 @@ export {
 } from "./react/provider"
 export { useScenario, useScenarioSelector, useScenarioValue, type TypedScenario } from "./react/use-scenario"
 export type { PanelPosition, ScenarioPanelProps } from "./react/panel"
+export type { StateSwitcherProps } from "./react/switcher"
+export {
+  STATE_PARAM,
+  useStateParam,
+  type BenchStateDef,
+  type BenchStates,
+  type StateBenchProps,
+  type StateParamOptions,
+} from "./react/bench-state"
 
 export * from "./core/index"
 
+import { createElement } from "react"
+
+import { BenchBody, type BenchStates, type StateBenchProps, useBench } from "./react/bench-state"
+
 export function ScenarioPanel(_props: import("./react/panel").ScenarioPanelProps): null {
   return null
+}
+
+export function StateSwitcher(_props: import("./react/switcher").StateSwitcherProps): null {
+  return null
+}
+
+/* The bench still renders the state its URL names, so a link keeps working.
+   Only the switcher is gone. */
+export function StateBench<T extends BenchStates>(props: StateBenchProps<T>) {
+  const { state } = useBench(props)
+  return createElement(BenchBody, {
+    state,
+    width: props.width,
+    reserve: null,
+    children: state === null ? null : props.children(state),
+  })
 }

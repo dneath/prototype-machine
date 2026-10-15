@@ -1,9 +1,10 @@
 import * as React from "react"
 import { createRoot } from "react-dom/client"
 
-import { ScenarioPanel, ScenarioProvider, useScenario } from "prototype-machine"
+import { ScenarioPanel, ScenarioProvider, StateSwitcher, useScenario } from "prototype-machine"
 
 import { scenario } from "./scenario"
+import { RequestLogStates } from "./states/request-log/page"
 import "./demo.css"
 
 /* A stand-in for a router, so the demo can show `when` predicates working
@@ -24,7 +25,7 @@ function usePath() {
   return { path, navigate }
 }
 
-const ROUTES = ["/overview", "/guardrails", "/signin"]
+const ROUTES = ["/overview", "/guardrails", "/signin", "/states/request-log"]
 
 function Screen({ path, navigate }: { path: string; navigate: (to: string) => void }) {
   /* Exactly how a real screen reads it: flat values off one hook, no knowledge
@@ -56,7 +57,7 @@ function Screen({ path, navigate }: { path: string; navigate: (to: string) => vo
         <p>
           {p.hasEvents && p.data !== "empty"
             ? "A table of blocked and flagged requests."
-            : "Nothing has been blocked or flagged — the teaching empty state."}
+            : "Nothing has been blocked or flagged. This is the teaching empty state."}
         </p>
       ) : path === "/signin" ? (
         <p>
@@ -118,6 +119,8 @@ function Screen({ path, navigate }: { path: string; navigate: (to: string) => vo
 
 function App() {
   const { path, navigate } = usePath()
+  /* A component bench is its own scratch route. It needs no provider. */
+  if (path === "/states/request-log") return <RequestLogStates />
   return (
     <ScenarioProvider
       machine={scenario}
@@ -128,6 +131,8 @@ function App() {
     >
       <Screen path={path} navigate={navigate} />
       <ScenarioPanel />
+      {/* One machine as a bar, beside the panel. */}
+      <StateSwitcher machine="data" />
     </ScenarioProvider>
   )
 }

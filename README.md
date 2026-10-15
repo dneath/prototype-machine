@@ -1,10 +1,11 @@
 # prototype-machine
 
 A dev-only control panel for React prototypes. Declare the states your prototype can be
-in — empty, loading, first run, admin, trial expired — and get a panel that drives it.
-Combinations you never declared can't be set.
+in (empty, loading, first run, admin, trial expired) and get a panel that drives it.
+Combinations you never declared can't be set. A bench shows one component in every
+state it can be in, one link per state.
 
-Renders nothing in production.
+The panel and the switcher render nothing in production.
 
 ## Quick start
 
@@ -87,7 +88,7 @@ Two kinds of control, and choosing between them is most of the work.
 
 Values that move together belong in one machine. Then "8 projects but no team" stops
 being something a reviewer can click into: `go()` refuses a move you never declared, and
-the panel draws it disabled — visible, but not reachable.
+the panel draws it disabled: visible, but not reachable.
 
 - **Transitions** declare the legal moves. Omit them and every state is one click from
   every other: a switch, not a journey.
@@ -102,7 +103,7 @@ the panel draws it disabled — visible, but not reachable.
 
 Any control can carry `group`. Controls sharing a group render under one collapsible
 heading, in the order the group is first seen; ungrouped controls stay at the top. A
-section is always a title and its controls — never a line of explanation. Put
+section is always a title and its controls, never a line of explanation. Put
 explanations in `note`, which becomes a tooltip.
 
 ```ts
@@ -116,7 +117,53 @@ fields: {
 Past eight rows the panel grows a filter box. Pin it open to keep it up while you click
 around the prototype.
 
+## Every state of one component
+
+A bench puts one real component on a scratch page, with a switcher for every state the
+component can be in. The state lives in the URL, so every state is a link.
+
+```tsx
+// src/states/request-log/page.tsx
+import { StateBench } from "prototype-machine"
+import { RequestLog } from "../../components/request-log"
+import { FIXTURES } from "./fixtures"
+
+const STATES = {
+  loading: "Loading",
+  empty: { label: "Empty", note: "A new key, no traffic yet" },
+  typical: "Typical",
+  error: "Error",
+}
+
+export function RequestLogStates() {
+  return (
+    <StateBench states={STATES} missing={{ partial: "Partly loaded" }} width={880} label="Request log states">
+      {(state) => <RequestLog {...FIXTURES[state]} />}
+    </StateBench>
+  )
+}
+```
+
+Open `/states/request-log?__state=empty`. A bar at the bottom center lists the states.
+
+- **The URL is the source of truth.** `?__state=empty` survives a reload, opens the same
+  state for a teammate, and lets a test loop over every state.
+- **A state the code cannot reach is listed, not faked.** Put it in `missing`. The bar
+  shows it struck through and disabled, so the gap stays visible.
+- **No keys taken from the page.** Arrow keys, `Home` and `End` move between states only
+  while focus is in the bar. A Hide button clears it for a screenshot.
+- **One folder, one delete.** The bench renders the real component and changes nothing
+  in it. Delete the folder and the route to remove it.
+
+`<StateSwitcher machine="data" />` puts the same bar on a machine from your scenario,
+inside the provider. Illegal moves are disabled, the same as in the panel.
+
+The full workflow is in [reference/bench.md](reference/bench.md).
+
 ## What you get
+
+**Nothing bound to the keyboard.** The panel opens from a click on its launcher. It
+binds no shortcut, so it never collides with your app's keys.
 
 **A panel that owns its own look.** Dark, plain and deliberately unlike your app, so it
 never becomes part of a screenshot or part of the critique. It renders in its own shadow
@@ -128,7 +175,7 @@ Drag it by the launcher or the header; drop it near a corner and it snaps.
 **Stress tests, one click away.** Give a string or number field `presets: "stress"` and
 it gets the worst cases real data produces: empty, 2,000 characters, an unbreakable URL,
 right-to-left, CJK, emoji sequences, markup, 1M. The panel's **Page** section flips the
-whole page to RTL, scales its text to 200%, and slows or pauses its animations — then
+whole page to RTL, scales its text to 200%, and slows or pauses its animations, then
 puts everything back.
 
 ```ts
@@ -158,7 +205,7 @@ can build a scenario and assert on it.
 
 ## Example prompts
 
-The repo ships an agent skill — [`SKILL.md`](SKILL.md) and [`reference/`](reference) —
+The repo ships an agent skill ([`SKILL.md`](SKILL.md) and [`reference/`](reference))
 that teaches a coding agent to model a scenario space and wire the panel. With it
 installed, these are the kinds of things to ask for.
 
@@ -172,8 +219,8 @@ installed, these are the kinds of things to ask for.
 **Build something new with the states declared up front**
 
 > Create an onboarding flow with three steps: connect an account, create the first
-> project, invite the team. Model it as a machine with transitions — forward one step at
-> a time, back to the start from anywhere — where each state assigns `projectCount` and
+> project, invite the team. Model it as a machine with transitions (forward one step at
+> a time, back to the start from anywhere) where each state assigns `projectCount` and
 > `hasTeam`. Add a "Restart" action that resets the scenario and navigates to step one.
 
 **Switch who's looking**
@@ -202,12 +249,20 @@ installed, these are the kinds of things to ask for.
 > a full page of 25 and 26. Then check the card in RTL at 200% text from the Page
 > section.
 
+**Show every state of one component**
+
+> Build a state bench for the RequestLog component. Find every state in its code, feed
+> product-shaped data through its props, hold loading still, and list the states the
+> design shows but the code cannot reach as missing. Check each state in a browser, then
+> give me the URL and the list of states.
+
 ## Documentation
 
 | Doc | What it covers |
 | --- | --- |
-| [reference/api.md](reference/api.md) | Every option and type — `defineMachine`, fields, provider, panel, `useScenario`, the core entry, errors. |
-| [reference/recipes.md](reference/recipes.md) | How to model something — journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS. |
+| [reference/api.md](reference/api.md) | Every option and type: `defineMachine`, fields, provider, panel, `StateBench`, `StateSwitcher`, `useScenario`, the core entry, errors. |
+| [reference/recipes.md](reference/recipes.md) | How to model something: journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS. |
+| [reference/bench.md](reference/bench.md) | How to build a bench: find the states in the code, feed data at the boundary, verify each state in a browser, remove it. |
 | [SKILL.md](SKILL.md) | The agent skill itself. |
 
 Two things worth knowing before you ship a review build:
@@ -216,7 +271,7 @@ Two things worth knowing before you ship a review build:
   that honour the `production` export condition (Vite, webpack 5, esbuild, Next) resolve
   `ScenarioPanel` to a stub that renders nothing, so its bytes never ship. To show the
   panel in a deployed review build, import it from `prototype-machine/panel`.
-- If you link the package by path, deduplicate `react` and `react-dom` — a `file:`
+- If you link the package by path, deduplicate `react` and `react-dom`. A `file:`
   dependency resolves through a symlink and can give you two copies of React.
 
 ## Contributing

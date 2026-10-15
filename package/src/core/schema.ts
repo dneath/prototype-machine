@@ -87,7 +87,7 @@ export interface NumberField extends Common {
   step?: number
   control?: "stepper" | "range"
   /**
-   * One-click values beside the input — the 0, 1 and 99+ a layout has to
+   * One-click values beside the input: the 0, 1 and 99+ a layout has to
    * survive. `"stress"` uses the built-in edge cases (`STRESS_NUMBERS`),
    * keeping only those inside `min`/`max`.
    */
@@ -193,7 +193,7 @@ export interface MachineConfigShape {
 /**
  * `defineMachine` takes a `const` type parameter so state ids and enum options
  * survive as literal unions. That also freezes every `assign` value into a
- * literal (`step: 0` becomes the type `0`), which is wrong — the field is a
+ * literal (`step: 0` becomes the type `0`), which is wrong. The field is a
  * number that happens to start at zero. Widen those back.
  */
 export type Widen<T> = T extends string
@@ -204,7 +204,7 @@ export type Widen<T> = T extends string
       ? boolean
       : T
 
-/** `{ journey: "parked" | "firstRun" | ... }` — the cursor of each machine. */
+/** `{ journey: "parked" | "firstRun" | ... }`: the cursor of each machine. */
 export type MachineCursors<M> = {
   -readonly [K in keyof M]: M[K] extends { states: infer S } ? keyof S & string : string
 }
@@ -227,7 +227,7 @@ export type AssignKeys<M> = AllAssigns<M> extends infer U
  *
  * Values UNION across states rather than intersecting: `firstRequestAt` is
  * `null` in three states and a string in two, and intersecting those gives
- * `never` — which silently poisons the whole context type and is exactly the
+ * `never`, which silently poisons the whole context type and is exactly the
  * kind of thing you only notice when every property stops autocompleting.
  */
 export type MachineAssigns<M> = {

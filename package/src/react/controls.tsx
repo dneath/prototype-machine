@@ -13,7 +13,7 @@ const PRESET_PILLS = 6
 
 /**
  * A labelled control. `onReset`, when given, draws a small way back to the
- * default beside the label — only while the value differs from it, so the
+ * default beside the label, only while the value differs from it, so the
  * presence of the button is itself the "changed" signal.
  */
 export function Row({
@@ -95,11 +95,19 @@ export function Pill({
   )
 }
 
+/** Why a machine's state cannot be chosen from `current`, in the reviewer's words. */
+export function unreachableReason(def: MachineDef, current: string, moves: ReadonlyArray<string>): string {
+  const here = def.states[current]?.label ?? current
+  return moves.length
+    ? `Not reachable from ${here}. From here: ${moves.map((s) => def.states[s]?.label ?? s).join(", ")}.`
+    : `Not reachable from ${here}, which has no moves out.`
+}
+
 /**
- * A machine's states, as pills — or as a dropdown past `SELECT_THRESHOLD`.
+ * A machine's states, as pills, or as a dropdown past `SELECT_THRESHOLD`.
  *
  * An illegal move renders present but disabled rather than hidden. The shape of
- * the journey is part of what the panel is showing — a reviewer needs to see
+ * the journey is part of what the panel is showing. A reviewer needs to see
  * that "Active" exists and is two rungs away, not have it vanish and reappear.
  */
 export function MachineRow({
@@ -113,13 +121,7 @@ export function MachineRow({
 }) {
   const current = scenario.snapshot.machines[id] ?? def.initial
   const entries = Object.entries(def.states)
-  const here = def.states[current]?.label ?? current
-  const moves = scenario.movesFrom(id)
-  const reason = moves.length
-    ? `Not reachable from ${here}. From here: ${moves
-        .map((s) => def.states[s]?.label ?? s)
-        .join(", ")}.`
-    : `Not reachable from ${here}, which has no moves out.`
+  const reason = unreachableReason(def, current, scenario.movesFrom(id))
   const label = def.label ?? id
 
   if (entries.length > SELECT_THRESHOLD) {

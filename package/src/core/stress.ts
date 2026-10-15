@@ -33,7 +33,7 @@ export const STRESS_TEXT: ReadonlyArray<LabelledPreset<string>> = [
   { label: "No breaks", value: "Donaudampfschifffahrtsgesellschaftskapitänswitwe-https://example.com/a/very/long/path/that/never/wraps?ref=newsletter_2026" },
   { label: "Email", value: "first.middle.lastname+notifications@subdomain.example-company.co.uk" },
   { label: "RTL", value: "مرحبًا بالعالم، هذا نص تجريبي طويل قليلاً" },
-  { label: "Mixed bidi", value: "Order #4521 تم الشحن on 12/03 — שלום" },
+  { label: "Mixed bidi", value: "Order #4521 تم الشحن on 12/03, שלום" },
   { label: "CJK", value: "国际化与本地化测试文本・日本語のテキスト・한국어" },
   { label: "Emoji", value: "👩🏽‍💻 🧑‍🤝‍🧑 🇯🇵 🏳️‍🌈 ✨" },
   { label: "Diacritics", value: "Zoë Ångström-Ñúñez Øvergård Łukasz Dvořák" },

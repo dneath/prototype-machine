@@ -1,7 +1,7 @@
 {
   "name": "prototype-machine",
-  "version": "0.10.0",
-  "description": "A dev-only control panel that drives a prototype through its states \u2014 declared as state machines, so illegal combinations cannot be expressed.",
+  "version": "0.11.0",
+  "description": "A dev-only control panel that drives a prototype through its states. States are declared as state machines, so illegal combinations cannot be expressed.",
   "author": "danneath",
   "license": "MIT",
   "repository": {
@@ -86,7 +86,8 @@
     "react",
     "control-panel",
     "empty-state",
-    "loading-state"
+    "loading-state",
+    "component-states"
   ],
   "peerDependencies": {
     "react": ">=18",

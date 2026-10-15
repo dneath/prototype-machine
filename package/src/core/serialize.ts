@@ -109,7 +109,7 @@ export function mergeSearch(machine: CompiledMachine, search: string, snapshot: 
 
 /* Storage. Every read is defensive: private browsing throws on access, a quota
    error throws on write, and a key written by an older build of the config can
-   hold states that no longer exist. None of it is worth an error boundary —
+   hold states that no longer exist. None of it is worth an error boundary:
    the defaults are always a correct scenario. */
 
 /** Only what differs from the defaults. A saved default is a pinned default:

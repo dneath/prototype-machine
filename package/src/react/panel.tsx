@@ -55,7 +55,7 @@ export interface ScenarioPanelProps {
   tools?: boolean
   /**
    * Rendered at the foot of the panel. It renders inside the panel's isolated
-   * root, where the host's stylesheets do not reach — build it from the
+   * root, where the host's stylesheets do not reach. Build it from the
    * exported `Row` and `Pill` so it matches the rest of the panel.
    */
   children?: React.ReactNode
@@ -86,7 +86,7 @@ export function ScenarioPanel({
 }: ScenarioPanelProps) {
   const p = useScenario()
   const active = enabled ?? p.enabled
-  const layer = useShadowLayer(active, zIndex, nonce)
+  const layer = useShadowLayer(active, zIndex, nonce, "panel")
 
   const panelRef = React.useRef<HTMLDivElement>(null)
   const launcherRef = React.useRef<HTMLButtonElement>(null)
@@ -194,7 +194,7 @@ export function ScenarioPanel({
   }, [active, open, setOpen, pinned, host])
 
   /* Non-modal: focus moves in so the keyboard can reach the controls, but
-     nothing is trapped — the prototype beside it stays usable. */
+     nothing is trapped: the prototype beside it stays usable. */
   const focusOnOpen = React.useRef(false)
   React.useEffect(() => {
     if (!p.open || !focusOnOpen.current) return

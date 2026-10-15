@@ -26,7 +26,7 @@ export interface PartialSnapshot {
 declare const process: { env: { NODE_ENV?: string } }
 
 /* Read once, and written so a bundler can substitute `process.env.NODE_ENV`
-   at build time — the expression is left textually intact for exactly that
+   at build time. The expression is left textually intact for exactly that
    reason, so it constant-folds and the dev-only branches drop out.
  *
  * When NOTHING substitutes it, `process` is undefined in a browser and the
@@ -176,7 +176,7 @@ export function compile(config: {
         }
         if (has(fields, key)) {
           throw new ScenarioError(
-            `"${machineId}.${stateId}" assigns "${key}", but that is also a free field. A key is owned by exactly one thing — either the machine writes it as part of a tuple, or it varies on its own.`
+            `"${machineId}.${stateId}" assigns "${key}", but that is also a free field. A key is owned by exactly one thing: either the machine writes it as part of a tuple, or it varies on its own.`
           )
         }
         const owner = has(ownerOf, key) ? ownerOf[key] : undefined
@@ -221,7 +221,7 @@ export function compile(config: {
       }
 
       /* A state nothing can reach is almost always a typo rather than an
-         intention, and it is invisible in the panel — the pill is simply never
+         intention, and it is invisible in the panel, because the pill is never
          enabled. Say so, but do not refuse to boot: the initial state is
          legitimately unreachable in a one-way journey. */
       const reachable = new Set<string>([def.initial])
@@ -345,7 +345,7 @@ export function compile(config: {
   function movesFrom(machineId: string, from: string): ReadonlyArray<string> {
     if (!has(machines, machineId)) return []
     const def = machines[machineId]
-    /* No transition map at all means "this is not a journey" — every state is
+    /* No transition map at all means "this is not a journey": every state is
        one click away, which is what a data-state or role switch wants. */
     if (!def.transitions) return Object.keys(def.states)
     return has(def.transitions, from) ? def.transitions[from] : []
@@ -360,7 +360,7 @@ export function compile(config: {
     const ctx: Record<string, unknown> = {}
 
     /* Assigns first, so a machine's tuple is in place before anything reads it,
-       then the cursors, then free fields. None of the three can collide —
+       then the cursors, then free fields. None of the three can collide:
        compile() refused the config if they could. */
     for (const [machineId, def] of Object.entries(machines)) {
       const raw = has(snapshot.machines, machineId) ? snapshot.machines[machineId] : def.initial
@@ -468,7 +468,7 @@ export function defineMachine<
   /* No default type arguments on M and F, deliberately. A default is used as
      the contextual type while inference is still open, so `= Record<never,
      never>` silently leaves every `when(env)` callback's parameter implicitly
-     `any`. Omitting the defaults costs nothing — an absent `machines` or
+     `any`. Omitting the defaults costs nothing. An absent `machines` or
      `fields` key still infers an empty object from the call site. */
   const M extends Record<string, MachineDef>,
   const F extends Record<string, AnyField>,

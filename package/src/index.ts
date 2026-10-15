@@ -1,4 +1,4 @@
-/* prototype-machine — the React entry.
+/* prototype-machine: the React entry.
  *
  * The interesting states of a product are states, not screens, and almost none
  * of them are reachable by clicking. This puts them one click away without
@@ -14,6 +14,15 @@ export {
 } from "./react/provider"
 export { useScenario, useScenarioSelector, useScenarioValue, type TypedScenario } from "./react/use-scenario"
 export { ScenarioPanel, type PanelPosition, type ScenarioPanelProps } from "./react/panel"
+export { StateBench, StateSwitcher, type StateSwitcherProps } from "./react/switcher"
+export {
+  STATE_PARAM,
+  useStateParam,
+  type BenchStateDef,
+  type BenchStates,
+  type StateBenchProps,
+  type StateParamOptions,
+} from "./react/bench-state"
 export {
   useDrag,
   clampToViewport,
