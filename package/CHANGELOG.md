@@ -31,6 +31,11 @@ A bench shows one component in every state its code can reach, one URL per state
 - Recipe 2: hold loading still, branch where the data comes in, use product-shaped data.
 - Docs and messages no longer use em dashes.
 
+### Fixed
+- The accent colour is `#8b3dff` (was `#7410ff`). The launcher's changed dot was 2.8:1
+  against the panel background, below the 3:1 of WCAG 2.1 SC 1.4.11. It is now 3.6:1, and
+  white text on the count badge is 5:1.
+
 ### Not adopted from the source skill
 - Page-wide keys (`←` `→`, `1` to `9`, `H`). The package binds no keyboard shortcut.
 - A 14% white fill for the active state. It is about 1.5:1 against the bar, below the

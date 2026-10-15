@@ -80,7 +80,9 @@ const CSS = `
      ever shows through a control. */
   --pm-field: #212121;
   --pm-hover: #2b2b2b;
-  --pm-accent: #7410ff;
+  /* 3.6:1 on --pm-bg, so the changed dot meets WCAG 1.4.11 (3:1), and white
+     text on it is 5:1 for the count badge. */
+  --pm-accent: #8b3dff;
   --pm-danger: #fca5a5;
   /* color-scheme decides how the browser paints native parts: scrollbars,
      the date picker, number spinners. Stated, never inherited. */
@@ -175,7 +177,7 @@ const CSS = `
   pointer-events: none;
   border: 1px dashed var(--pm-accent);
   border-radius: 12px;
-  background: rgba(116, 16, 255, 0.08);
+  background: rgba(139, 61, 255, 0.08);
 }
 .pm-snap-launcher { width: 40px; height: 40px; border-radius: 9999px; }
 .pm-snap-panel { width: 288px; height: 120px; }
