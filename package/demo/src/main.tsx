@@ -1,7 +1,7 @@
 import * as React from "react"
 import { createRoot } from "react-dom/client"
 
-import { ScenarioPanel, ScenarioProvider, StateSwitcher, useScenario } from "prototype-machine"
+import { ScenarioPanel, ScenarioProvider, useScenario } from "prototype-machine"
 
 import { scenario } from "./scenario"
 import { RequestLogStates } from "./states/request-log/page"
@@ -131,8 +131,6 @@ function App() {
     >
       <Screen path={path} navigate={navigate} />
       <ScenarioPanel />
-      {/* One machine as a bar, beside the panel. */}
-      <StateSwitcher machine="data" />
     </ScenarioProvider>
   )
 }

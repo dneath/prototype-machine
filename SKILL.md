@@ -13,7 +13,7 @@ description: >-
   panel, debug panel, empty state, loading state, error state, forced state, first-run,
   onboarding state, edge cases, stress test, long text, RTL, feature flag panel, prototype-machine, defineMachine, ScenarioPanel,
   useScenario, state bench, component states, every state of a component, StateBench,
-  StateSwitcher, __state. NOT for production feature flags or real application state.
+  __state. NOT for production feature flags or real application state.
   This is scaffolding for showing a design, and it says so out loud.
 ---
 
@@ -146,8 +146,8 @@ only while focus is in the bar.
 8. **"Show every state of this component" / "give me a link to the error state"** →
    a bench. Follow `reference/bench.md` from step 1. Do not skip finding the states in
    the code.
-9. **"Step through the data states without opening the panel"** →
-   `<StateSwitcher machine="data" />` inside the provider.
+9. **"Step through the data states without opening the panel"** → use the panel. It is
+   the one place for scenario controls. Do not add a second bar for a machine.
 10. **Anything about production flags, real auth, or persisted user settings** → wrong
    tool. Say so.
 
@@ -179,7 +179,8 @@ only while focus is in the bar.
 9. **The panel has to be movable, because it covers the thing being reviewed.** It drags
    from its launcher or its header, snaps to a corner when released near one, and
    remembers where it was put. Its corners keep clear of bars fixed to the page's top or
-   bottom edge by default (`avoidBars`); do not turn that off to make room. Do not reintroduce a fixed corner as the only option.
+   bottom edge by default (`avoidBars`); do not turn that off to make room. Do not
+   reintroduce a fixed corner as the only option.
 10. **If it is not a state of the component, it is a field.** A theme switch, a density
    toggle, a locale: these vary freely, write no tuple and mean nothing to the machines.
    Modelling one as a machine puts it in a row beside the real journeys, which is how a
@@ -196,6 +197,10 @@ only while focus is in the bar.
     a timer. Fixtures look like the product's data, in real quantities.
 14. **Check every state in a browser before you say it works.** Open each state's URL,
     make sure the component shows it, and run axe. Do it again after each change.
+15. **One place for scenario controls: the panel.** Do not add a bar, a toolbar or a
+    second switcher for a machine the panel already shows. Two places for one control
+    are two things to keep in step. A bench page has no panel, so its bar is the only
+    control on that page.
 
 ## Before you finish
 

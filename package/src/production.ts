@@ -15,7 +15,6 @@ export {
 } from "./react/provider"
 export { useScenario, useScenarioSelector, useScenarioValue, type TypedScenario } from "./react/use-scenario"
 export type { PanelPosition, ScenarioPanelProps } from "./react/panel"
-export type { StateSwitcherProps } from "./react/switcher"
 export {
   STATE_PARAM,
   useStateParam,
@@ -32,10 +31,6 @@ import { createElement } from "react"
 import { BenchBody, type BenchStates, type StateBenchProps, useBench } from "./react/bench-state"
 
 export function ScenarioPanel(_props: import("./react/panel").ScenarioPanelProps): null {
-  return null
-}
-
-export function StateSwitcher(_props: import("./react/switcher").StateSwitcherProps): null {
   return null
 }
 

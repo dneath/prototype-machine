@@ -14,7 +14,7 @@ export {
 } from "./react/provider"
 export { useScenario, useScenarioSelector, useScenarioValue, type TypedScenario } from "./react/use-scenario"
 export { ScenarioPanel, type PanelPosition, type ScenarioPanelProps } from "./react/panel"
-export { StateBench, StateSwitcher, type StateSwitcherProps } from "./react/switcher"
+export { StateBench } from "./react/switcher"
 export {
   STATE_PARAM,
   useStateParam,

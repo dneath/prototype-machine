@@ -11,10 +11,8 @@ A bench shows one component in every state its code can reach, one URL per state
   Each state mounts fresh. The container sets only `width`.
 - `missing` on `StateBench`: states the design shows but the code cannot reach. Listed
   struck through and disabled, with "Not in the code yet" and the note. Never rendered.
-- `StateSwitcher`: the same bar for one machine of a scenario, inside the provider.
-  Illegal moves are disabled with the panel's reason.
 - `useStateParam(ids, { initial, param, missing })`: the URL hook under the bench.
-- `avoidBars` on `ScenarioPanel`, `StateBench` and `StateSwitcher`, default `true`. The
+- `avoidBars` on `ScenarioPanel` and `StateBench`, default `true`. The
   tools keep clear of bars fixed to the top or bottom edge of the page (a header, a
   footer). They hit-test the edges, so no configuration is needed, and check again after
   a resize, a scroll or a change to the page.
@@ -30,8 +28,7 @@ A bench shows one component in every state its code can reach, one URL per state
 - Each shadow host carries `data-pm-layer` (`"panel"` or `"switcher"`). Tests that found
   the panel with `document.querySelector("prototype-machine")` should add
   `[data-pm-layer="panel"]`.
-- The production entry renders a bench's current state without the switcher, and
-  `StateSwitcher` as nothing.
+- The production entry renders a bench's current state without the switcher.
 - Recipe 2: hold loading still, branch where the data comes in, use product-shaped data.
 - Docs and messages no longer use em dashes.
 

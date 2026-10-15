@@ -299,20 +299,6 @@
       "switcherHost": "prototype-machine[data-pm-layer=switcher]"
     },
     "production": "The main entry renders the URL's state without the switcher.",
-    "stateSwitcher": {
-      "component": "StateSwitcher",
-      "props": {
-        "machine": "machine id (required)",
-        "label": "default: the machine's label",
-        "placement": "'bottom' | 'top'",
-        "offset": "number | string",
-        "zIndex": "number",
-        "nonce": "string",
-        "enabled": "default: the provider's",
-        "avoidBars": "boolean, default true"
-      },
-      "illegalMoves": "disabled, with the panel's reason"
-    },
     "hook": "useStateParam(ids, { initial, param?, missing? }) => [state | null, setState]",
     "workflow": "./bench.md"
   }

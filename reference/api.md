@@ -14,7 +14,6 @@ the exhaustive surface.
 - [ScenarioProvider](#scenarioprovider)
 - [ScenarioPanel](#scenariopanel)
 - [StateBench](#statebench)
-- [StateSwitcher](#stateswitcher)
 - [useStateParam](#usestateparam)
 - [useScenario](#usescenario)
 - [The core entry](#the-core-entry)
@@ -193,7 +192,6 @@ In development, two providers sharing a `storageKey` log a warning.
 | `inset` | `{ name: string; value: string }` | None |
 | `nonce` | `string` | None |
 | `enabled` | `boolean` | the provider's |
-| `avoidBars` | `boolean` | `true` |
 | `avoidBars` | `boolean` | `true` |
 | `tools` | `boolean` | `true` |
 | `children` | `ReactNode` | None |
@@ -419,36 +417,6 @@ until the page reloads.
 the URL names, without the switcher, and the switcher's code is not shipped.
 `prototype-machine/panel` keeps the switcher for a review build.
 
-## StateSwitcher
-
-```tsx
-<ScenarioProvider machine={scenario} storageKey="my-prototype-v1" syncUrl>
-  <App />
-  <ScenarioPanel />
-  <StateSwitcher machine="data" />
-</ScenarioProvider>
-```
-
-The bench's bar, bound to one machine of the scenario. It reads and writes through the
-provider, so storage, the URL and the panel stay in step. With `syncUrl` on the provider,
-every state is a link.
-
-| Prop | Type | Default |
-| --- | --- | --- |
-| `machine` | machine id | **Required.** |
-| `label` | `string` | the machine's `label` |
-| `placement` | `"bottom" \| "top"` | `"bottom"` |
-| `offset` | `number \| string` | `24px` |
-| `zIndex` | `number` | `2147483000` |
-| `nonce` | `string` | None |
-| `enabled` | `boolean` | the provider's |
-
-- A move the journey does not allow from the current state is disabled, with the same
-  reason the panel gives.
-- When the machine's `when` hides it, the bar hides too.
-- A `machine` that names no machine warns once and renders nothing.
-- In production the main entry renders nothing.
-
 ## useStateParam
 
 ```ts
@@ -562,7 +530,6 @@ Console warnings at runtime:
 - an action whose `run` throws (the panel stays up)
 - a `?__state=` value that is not a bench state (with a suggestion), or that names a
   missing state
-- a `<StateSwitcher machine>` that names no machine
 
 The errors are worded to name the fix. They are the main way the package teaches the
 model, so do not swallow them.

@@ -171,14 +171,11 @@ Open `/states/request-log?__state=empty`. A bar at the bottom center lists the s
 - **One folder, one delete.** The bench renders the real component and changes nothing
   in it. Delete the folder and the route to remove it.
 
-`<StateSwitcher machine="data" />` puts the same bar on a machine from your scenario,
-inside the provider. Illegal moves are disabled, the same as in the panel.
-
 The full workflow is in [reference/bench.md](reference/bench.md).
 
 ## What you get
 
-**Out of the way.** The panel and the switcher keep clear of bars fixed to the top or
+**Out of the way.** The panel and the bench bar keep clear of bars fixed to the top or
 bottom of the page, such as a header or a footer. Nothing to configure.
 
 **Nothing bound to the keyboard.** The panel opens from a click on its launcher. It
@@ -279,7 +276,7 @@ installed, these are the kinds of things to ask for.
 
 | Doc | What it covers |
 | --- | --- |
-| [reference/api.md](reference/api.md) | Every option and type: `defineMachine`, fields, provider, panel, `StateBench`, `StateSwitcher`, `useScenario`, the core entry, errors. |
+| [reference/api.md](reference/api.md) | Every option and type: `defineMachine`, fields, provider, panel, `StateBench`, `useScenario`, the core entry, errors. |
 | [reference/recipes.md](reference/recipes.md) | How to model something: journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS. |
 | [reference/bench.md](reference/bench.md) | How to build a bench: find the states in the code, feed data at the boundary, verify each state in a browser, remove it. |
 | [SKILL.md](SKILL.md) | The agent skill itself. |

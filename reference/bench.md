@@ -32,7 +32,6 @@ end.
 | --- | --- |
 | "What does this component look like when the data is X?" | `StateBench` |
 | "What does the product look like when the account is in state X?" | `defineMachine` + `ScenarioPanel` |
-| "Step through one machine's states without the panel open." | `StateSwitcher` |
 
 **Recommendation:** use a bench for one component and the panel for a journey across
 screens. They work together: a bench page does not need the provider.

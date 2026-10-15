@@ -4,14 +4,12 @@ import * as React from "react"
 import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { defineMachine } from "../core/machine"
 import { sample } from "../core/machine.test"
 import { type BenchStates, type StateBenchProps, STATE_PARAM, useStateParam } from "./bench-state"
 import { ScenarioPanel } from "./panel"
 import { ScenarioProvider } from "./provider"
-import { StateBench, StateSwitcher } from "./switcher"
+import { StateBench } from "./switcher"
 import { bar, panelRoot, switcherMounted, switcherRoot, ui } from "./test-utils"
-import { useScenario } from "./use-scenario"
 import * as production from "../production"
 
 /* A component with the branches a real one has. The bench feeds it through
@@ -280,7 +278,6 @@ describe("the production bench", () => {
     )
     expect(body()).toContain("j.rivera")
     expect(switcherMounted()).toBe(false)
-    expect(production.StateSwitcher({ machine: "data" })).toBe(null)
   })
 })
 
@@ -297,90 +294,5 @@ describe("useStateParam", () => {
     act(() => set("b"))
     expect(screen.getByTestId("probe").textContent).toBe("b")
     expect(window.location.search).toBe("?__state=b")
-  })
-})
-
-describe("StateSwitcher", () => {
-  function Readout() {
-    const p = useScenario(sample)
-    return <span data-testid="journey">{p.journey}</span>
-  }
-  function mount(props: Partial<React.ComponentProps<typeof StateSwitcher>> = {}, provider: Partial<React.ComponentProps<typeof ScenarioProvider>> = {}) {
-    return render(
-      <ScenarioProvider machine={sample} storageKey="switcher-test-v1" enabled {...provider}>
-        <Readout />
-        <StateSwitcher machine="journey" {...props} />
-      </ScenarioProvider>,
-    )
-  }
-
-  it("lists a machine's states under its label", () => {
-    mount()
-    expect(bar.getByRole("navigation", { name: "Get connected" })).toBeTruthy()
-    expect(pressed()).toEqual(["First run"])
-  })
-
-  it("draws illegal moves disabled, with the reason, and refuses them", async () => {
-    const user = userEvent.setup()
-    mount()
-    const active = bar.getByRole("button", { name: "Active" })
-    expect(active.getAttribute("aria-disabled")).toBe("true")
-    expect(active.getAttribute("title")).toBe("Not reachable from First run. From here: Key made, Parked.")
-    await user.click(active)
-    expect(screen.getByTestId("journey").textContent).toBe("firstRun")
-    await user.click(bar.getByRole("button", { name: "Key made" }))
-    expect(screen.getByTestId("journey").textContent).toBe("keyMade")
-  })
-
-  it("steps only through legal moves", () => {
-    mount()
-    const first = bar.getByRole("button", { name: "First run" })
-    fireEvent.keyDown(first, { key: "ArrowRight" })
-    expect(screen.getByTestId("journey").textContent).toBe("keyMade")
-  })
-
-  it("makes every state a link with syncUrl", async () => {
-    const user = userEvent.setup()
-    mount({}, { syncUrl: true })
-    await user.click(bar.getByRole("button", { name: "Key made" }))
-    await new Promise((r) => requestAnimationFrame(() => r(null)))
-    expect(new URLSearchParams(window.location.search).get("journey")).toBe("keyMade")
-  })
-
-  it("follows the machine's when", () => {
-    const signIn = defineMachine({
-      machines: {
-        failure: {
-          label: "Sign-in failure",
-          initial: "none",
-          when: (env) => env.path === "/signin",
-          states: { none: { label: "None" }, credentials: { label: "Wrong credentials" } },
-        },
-      },
-    })
-    const { rerender } = render(
-      <ScenarioProvider machine={signIn} storageKey="switcher-when-v1" enabled path="/overview">
-        <StateSwitcher machine="failure" />
-      </ScenarioProvider>,
-    )
-    expect(switcherMounted()).toBe(false)
-    rerender(
-      <ScenarioProvider machine={signIn} storageKey="switcher-when-v1" enabled path="/signin">
-        <StateSwitcher machine="failure" />
-      </ScenarioProvider>,
-    )
-    expect(switcherMounted()).toBe(true)
-  })
-
-  it("warns once and renders nothing for an unknown machine", () => {
-    const spy = vi.spyOn(console, "warn").mockImplementation(() => {})
-    mount({ machine: "jorney" })
-    expect(switcherMounted()).toBe(false)
-    expect(spy.mock.calls.flat().join(" ")).toMatch(/names no machine/)
-  })
-
-  it("follows the provider's enabled", () => {
-    mount({}, { enabled: false })
-    expect(switcherMounted()).toBe(false)
   })
 })

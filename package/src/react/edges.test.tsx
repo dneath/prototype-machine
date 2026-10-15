@@ -5,7 +5,7 @@ import { sample } from "../core/machine.test"
 import { MAX_BAR_SHARE, NO_EDGES, edgeInsetsFrom, measureEdges } from "./edges"
 import { ScenarioPanel } from "./panel"
 import { ScenarioProvider } from "./provider"
-import { StateBench, StateSwitcher } from "./switcher"
+import { StateBench } from "./switcher"
 import { panelRoot, switcherRoot } from "./test-utils"
 
 const VIEW = { width: 1280, height: 800 }
@@ -144,15 +144,5 @@ describe("keeping clear of edge bars", () => {
     )
     const launcher = panelRoot().querySelector(".pm-launcher") as HTMLElement
     expect(launcher.style.getPropertyValue("--pm-edge-bottom")).toBe("")
-  })
-
-  it("applies to StateSwitcher too", () => {
-    fixedBar("bottom", 30)
-    render(
-      <ScenarioProvider machine={sample} storageKey="edges-test-v1" enabled>
-        <StateSwitcher machine={Object.keys(sample.config.machines)[0]} />
-      </ScenarioProvider>,
-    )
-    expect(nav().style.bottom).toBe("38px")
   })
 })

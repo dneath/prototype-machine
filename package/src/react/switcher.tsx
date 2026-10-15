@@ -3,13 +3,11 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 
-import { has, isDev, visible, warn } from "../core/index"
+import { isDev } from "../core/index"
 import { BenchBody, type BenchStates, type StateBenchProps, labelOf, noteOf, cssLength, useBench } from "./bench-state"
-import { unreachableReason } from "./controls"
 import { type EdgeInsets, useEdgeInsets } from "./edges"
 import { EyeOffIcon } from "./icons"
 import { TOP_Z_INDEX, useShadowLayer } from "./shadow"
-import { useScenario } from "./use-scenario"
 
 /* The state switcher: one bar of states, centred on an edge of the viewport.
  *
@@ -62,7 +60,7 @@ function stateButton(nav: HTMLElement, id: string): HTMLElement | undefined {
   return undefined
 }
 
-/** The bar itself. Shared by `StateBench` and `StateSwitcher`. */
+/** The bar itself, drawn by `StateBench`. */
 export function SwitcherBar({
   options,
   value,
@@ -231,80 +229,5 @@ export function StateBench<T extends BenchStates>(props: StateBenchProps<T>) {
         onHide={() => setHidden(true)}
       />
     </>
-  )
-}
-
-export interface StateSwitcherProps {
-  /** The id of the machine whose states the bar lists. */
-  machine: string
-  /** Accessible name. Defaults to the machine's label. */
-  label?: string
-  /** Default `"bottom"`. */
-  placement?: "bottom" | "top"
-  /** Distance from that edge. A number is pixels; a string is any CSS length. */
-  offset?: number | string
-  zIndex?: number
-  nonce?: string
-  /** Override the provider's `enabled`. */
-  enabled?: boolean
-  /** Keep clear of bars fixed to the page's top or bottom edge. Default true. */
-  avoidBars?: boolean
-}
-
-const warned = new Set<string>()
-
-/**
- * One machine's states as a bar at the edge of the viewport, beside (or
- * instead of) the panel. A journey's illegal moves are listed but disabled,
- * with the reason, exactly as in the panel. Pair it with `syncUrl` on the
- * provider so every state is a link.
- */
-export function StateSwitcher({
-  machine: id,
-  label,
-  placement = "bottom",
-  offset,
-  zIndex = TOP_Z_INDEX,
-  nonce,
-  enabled,
-  avoidBars = true,
-}: StateSwitcherProps) {
-  const p = useScenario()
-  const [hidden, setHidden] = React.useState(false)
-  const def = has(p.machine.config.machines, id) ? p.machine.config.machines[id] : undefined
-  if (!def && !warned.has(id)) {
-    warned.add(id)
-    warn(`<StateSwitcher machine="${id}"> names no machine. Known: ${Object.keys(p.machine.config.machines).join(", ") || "none"}.`)
-  }
-  const shown = !!def && visible({ when: def.when }, p.env)
-  const active = (enabled ?? p.enabled) && shown && !hidden
-  const edges = useEdgeInsets(active && avoidBars && offset === undefined)
-
-  const current = def ? (p.snapshot.machines[id] ?? def.initial) : null
-  const reason = def && current !== null ? unreachableReason(def, current, p.movesFrom(id)) : undefined
-  const options: SwitcherOption[] = def
-    ? Object.entries(def.states).map(([stateId, state]) => ({
-        id: stateId,
-        label: state.label ?? stateId,
-        note: state.note,
-        disabled: !p.can(id, stateId),
-        reason,
-      }))
-    : []
-
-  return (
-    <SwitcherBar
-      options={options}
-      value={current}
-      onSelect={(stateId) => p.go(id, stateId)}
-      label={label ?? def?.label ?? id}
-      placement={placement}
-      offset={offset}
-      edges={edges}
-      zIndex={zIndex}
-      nonce={nonce}
-      active={active}
-      onHide={() => setHidden(true)}
-    />
   )
 }
