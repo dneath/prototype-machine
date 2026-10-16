@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.12.0
+
+Ready for npm, plus three things learned from Josh Puckett's
+[DialKit](https://github.com/joshpuckett/dialkit).
+
+### Added
+- A real slider for `control: "range"`. Press anywhere on the track to jump there and
+  drag from there; the drag holds if the pointer leaves the track. A tick marks each
+  step when there are ten or fewer. A box beside it shows the exact value and takes a
+  typed one. Arrow keys move one step, `Shift` or `Page Up`/`Page Down` ten, and
+  `Home`/`End` go to the ends. The fill and thumb move by `transform` only.
+- Copy ends with the config edits that would make the scenario on screen the starting
+  one, written as an instruction for a coding agent, when anything has changed. Tune,
+  copy, paste, and it becomes the default. The same text is `toDefaults()` in core.
+- The package ships its agent skill: `SKILL.md` and `reference/` are in the tarball, so
+  an agent can read the guidance that matches the installed version from
+  `node_modules/prototype-machine/`.
+
+### Changed
+- A `set` or `go` that changes nothing writes nothing: no render, no storage write, no
+  address bar update. A slider dragged within one step no longer re-renders the app on
+  every pointer move.
+- Row labels are sentence case at 12px; section titles stay small capitals; the panel
+  title is sentence case and white. Before, all three looked the same, and the title
+  was cut off at "Prototype contro…".
+- The README on npm links to GitHub with absolute URLs, so its links work there.
+
+### Release tooling
+- `npm run check` runs everything a release needs: tests, typecheck, build, smoke,
+  `publint`, Are the Types Wrong, and `test:pack`, which installs the packed tarball
+  into a throwaway app and imports every entry as ESM and CommonJS, checks the
+  `production` stub, and typechecks an app against the shipped types.
+  `prepublishOnly` runs it.
+- `npm version` updates the version named in `SKILL.md` and `reference/`, and a test
+  fails if they drift or if the changelog has no entry for the version.
+- GitHub Actions: CI on pushes and pull requests, and a release workflow that publishes
+  to npm with provenance when a `v*` tag is pushed, using npm trusted publishing (no
+  stored token).
+
 ## 0.11.0
 
 A bench shows one component in every state its code can reach, one URL per state.

@@ -67,22 +67,23 @@ and to wire the panel that drives it.
 
 ## Setup check
 
-This guidance targets **prototype-machine 0.11.0**.
+This guidance targets **prototype-machine 0.12.0**.
 
 1. Read the project's `package.json` and lockfile before touching anything. Check
    whether `prototype-machine` is already installed and at which version.
-2. **Never add or upgrade a dependency silently.** The package is not on npm yet. If the
-   user authorises it, build a tarball from the repo and install that file:
+2. **Never add or upgrade a dependency silently.** Once the user agrees, install it as
+   a dev dependency at an exact version:
    ```bash
-   # in prototype-machine/package
-   npm ci && npm run build && npm pack
-   # in the app
-   npm install --save-exact -D <path>/prototype-machine-0.11.0.tgz
+   npm install --save-dev --save-exact prototype-machine
    ```
-   When it is on npm: `npm install --save-exact prototype-machine@<version> -D`.
-3. **Never copy the package's source into the app.** It is an npm dependency, not a
+   If the registry has no such package, build a tarball from the repo instead
+   (`npm ci && npm pack` in `prototype-machine/package`) and install that file.
+3. **Read the docs that match the installed version.** The package ships this skill:
+   `node_modules/prototype-machine/SKILL.md` and its `reference/` describe exactly the
+   version installed. If they disagree with a copy from somewhere else, they win.
+4. **Never copy the package's source into the app.** It is an npm dependency, not a
    snippet to paste. If the user wants to modify it, they change the package.
-4. Requires React 18+. The `prototype-machine/core` entry needs no React and is what a
+5. Requires React 18+. The `prototype-machine/core` entry needs no React and is what a
    test or a script should import.
 
 ## Quick start

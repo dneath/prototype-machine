@@ -3,5 +3,8 @@ dist
 *.tgz
 .DS_Store
 
-# Generated from the root README by `npm run prepack`. Edit ../README.md.
+# Copied from the repo root by `npm pack` (scripts/prepack.mjs) and removed after.
+# Edit the files at the root.
 README.md
+SKILL.md
+reference/
