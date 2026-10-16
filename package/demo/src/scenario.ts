@@ -139,7 +139,9 @@ export const scenario = defineMachine({
       /* Mirrored onto <html> so plain CSS can read it. */
       dom: { attribute: "data-density" },
     },
-    seats: { type: "number", label: "Seats", group: "Look", default: 12, min: 0, max: 500 },
+    seats: { type: "number", label: "Seats", group: "Look", default: 12, min: 0, max: 500, control: "range" },
+    /* Few enough steps that the slider draws a tick for each. */
+    radius: { type: "number", label: "Card radius", group: "Look", default: 8, min: 0, max: 16, step: 4, control: "range" },
 
     /* STRESS. One-click worst cases for the card on the overview: the stress
        sets are built in, so a 2,000-character name or an Arabic one is a

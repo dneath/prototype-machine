@@ -43,7 +43,7 @@ describe("types", () => {
   })
 })
 
-import { changedCount, summarize } from "./index"
+import { changedCount, summarize, toDefaults } from "./index"
 
 describe("summarize()", () => {
   it("lists every control, marks what changed, and ends with the query", () => {
@@ -61,5 +61,24 @@ describe("summarize()", () => {
   it("falls back to the id when a machine has no label", () => {
     const bare = defineMachine({ machines: { data: { initial: "a", states: { a: {}, b: {} } } } })
     expect(outline(bare)).toContain("data (data), starts at a")
+  })
+})
+
+describe("toDefaults()", () => {
+  it("names each changed default, with its old value, as an instruction", () => {
+    const text = toDefaults(m, { machines: { journey: "second" }, fields: { seats: 3 } })
+    expect(text.split("\n")).toEqual([
+      "To make this the starting scenario, change these in the defineMachine config:",
+      '- machines.journey.initial: "second" (was "first")',
+      "- fields.seats.default: 3 (was 1)",
+    ])
+  })
+  it("writes a long string in full, not shortened", () => {
+    const long = defineMachine({ fields: { title: { type: "string", label: "Title", default: "" } } })
+    const value = "x".repeat(300)
+    expect(toDefaults(long, { machines: {}, fields: { title: value } })).toContain(JSON.stringify(value))
+  })
+  it("is empty when nothing differs", () => {
+    expect(toDefaults(m, m.initial())).toBe("")
   })
 })

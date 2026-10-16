@@ -293,6 +293,9 @@ export function ScenarioProvider({
       const current = editsRef.current
       const live = resolve(m, [...layersRef.current, current])
       const from = live.machines[machineId] ?? def.initial
+      /* Staying put is legal and changes nothing, so it writes nothing: no
+         render, no storage write, no address bar update. */
+      if (from === stateId) return
       if (!m.can(machineId, from, stateId)) {
         if (isDev) {
           console.warn(
@@ -338,8 +341,15 @@ export function ScenarioProvider({
         }
         fields[key] = value
       }
-      if (!Object.keys(fields).length) return
       const current = editsRef.current
+      /* A slider dragged within one step, or a pill clicked twice, sets what
+         is already set. Dropping those keeps the whole app from re-rendering
+         on every pointer move. */
+      const live = resolve(m, [...layersRef.current, current])
+      for (const key of Object.keys(fields)) {
+        if (Object.is(live.fields[key], fields[key])) delete fields[key]
+      }
+      if (!Object.keys(fields).length) return
       setEdits({
         machines: { ...current.machines },
         fields: { ...current.fields, ...fields },

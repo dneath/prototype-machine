@@ -31,5 +31,5 @@ export {
   shapeOf,
   writeStorage,
 } from "./serialize"
-export { describe, summarize, changedCount } from "./describe"
+export { describe, summarize, changedCount, toDefaults } from "./describe"
 export { STRESS_NUMBERS, STRESS_TEXT, presetsOf, type LabelledPreset } from "./stress"

@@ -294,6 +294,7 @@ describe("reset", () => {
     await user.click(ui.getByRole("button", { name: "Lots" }))
     await user.click(ui.getByRole("button", { name: "Copy the scenario as text" }))
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Count: 99  (default 3)"))
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("- fields.count.default: 99 (was 3)"))
     expect(await ui.findByRole("button", { name: "Copied the scenario" })).toBeTruthy()
   })
 })

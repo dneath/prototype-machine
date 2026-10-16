@@ -91,6 +91,32 @@ describe("the provider", () => {
     act(() => handle!.set({ seats: 4 }))
     expect(screen.getByTestId("seats").textContent).toBe("4")
   })
+
+  it("writes nothing when a set or a move changes nothing", () => {
+    let renders = 0
+    function Count() {
+      renders++
+      useScenario()
+      return null
+    }
+    mount(counted, <Count />)
+    act(() => handle!.set({ seats: 4 }))
+    const snapshot = handle!.snapshot
+    const before = renders
+    act(() => {
+      handle!.set({ seats: 4 })
+      handle!.set({ name: "x" })
+      handle!.go("journey", snapshot.machines.journey)
+    })
+    expect(renders).toBe(before)
+    expect(handle!.snapshot).toBe(snapshot)
+  })
+
+  it("still applies the changed half of a partly unchanged set", () => {
+    mount(counted)
+    act(() => handle!.set({ seats: 1, name: "y" }))
+    expect(handle!.snapshot.fields).toMatchObject({ seats: 1, name: "y" })
+  })
 })
 
 describe("the number input", () => {
