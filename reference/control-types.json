@@ -1,6 +1,6 @@
 {
-  "$comment": "Machine-readable catalogue for prototype-machine 0.11.0. Human docs: ./api.md",
-  "version": "0.11.0",
+  "$comment": "Machine-readable catalogue for prototype-machine 0.12.0. Human docs: ./api.md",
+  "version": "0.12.0",
   "kinds": {
     "machine": {
       "description": "A journey. One state is current; each state writes a whole tuple of context via `assign`. Use when moving one value alone would produce a state the product cannot be in.",
@@ -101,7 +101,7 @@
     },
     "number": {
       "value": "number",
-      "control": "Number input by default; a slider with control: 'range'",
+      "control": "Number input by default; with control: 'range', a slider (press or drag the track, ticks at 10 steps or fewer) plus a box for a typed value. 'range' requires min and max",
       "keys": {
         "min": "number",
         "max": "number",

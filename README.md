@@ -7,27 +7,13 @@ state it can be in, one link per state.
 
 The panel and the switcher render nothing in production.
 
-> **Status: 0.11.0, not on npm yet.** It will be published to npm later. Until then,
-> install it from a tarball that you build from this repo. See
-> [PUBLISHING.md](PUBLISHING.md).
-
 ## Quick start
 
-**0. Install it.** Build a tarball from this repo, then install the tarball in your app:
+**0. Install it** as a dev dependency. It needs React 18 or later.
 
 ```bash
-git clone https://github.com/dneath/prototype-machine.git
-cd prototype-machine/package
-npm ci
-npm run build
-npm pack          # writes prototype-machine-0.11.0.tgz
-
-cd /path/to/your-app
-npm install --save-exact -D /path/to/prototype-machine/package/prototype-machine-0.11.0.tgz
+npm install --save-dev --save-exact prototype-machine
 ```
-
-A tarball installs as copied files, so your app keeps one copy of React. When the package
-is on npm, this step becomes `npm install --save-exact prototype-machine -D`.
 
 **1. Describe the states.**
 
@@ -201,9 +187,17 @@ fields: {
 }
 ```
 
-**A way back.** Every changed field gets its own Reset, the header resets the lot (with
-a count), and Copy puts the current scenario on the clipboard as text for a bug report
-or an agent's prompt.
+**Sliders that feel like sliders.** `control: "range"` draws a track you press and drag,
+with a tick for each step when there are few, and a box beside it for typing an exact
+value.
+
+**A way back.** Every changed field gets its own Reset, and the header resets the lot
+(with a count).
+
+**Copy for a person and for an agent.** Copy puts the current scenario on the
+clipboard as text for a bug report, and ends with the exact config edits that would
+make it the starting scenario. Tune a value in the panel, copy, paste it to your coding
+agent, and it becomes the default.
 
 **Layered state.** A scenario resolves in four layers, each beating the one before:
 
@@ -221,9 +215,11 @@ can build a scenario and assert on it.
 
 ## Example prompts
 
-The repo ships an agent skill ([`SKILL.md`](SKILL.md) and [`reference/`](reference))
-that teaches a coding agent to model a scenario space and wire the panel. With it
-installed, these are the kinds of things to ask for.
+The package ships an agent skill ([`SKILL.md`](SKILL.md) and [`reference/`](reference))
+that teaches a coding agent to model a scenario space and wire the panel. After
+`npm install` it is at `node_modules/prototype-machine/SKILL.md`, matching the
+installed version; point your agent at it, or copy it into your agent's skills folder.
+With it loaded, these are the kinds of things to ask for.
 
 **Add prototype-machine to an existing prototype**
 
@@ -280,7 +276,8 @@ installed, these are the kinds of things to ask for.
 | [reference/recipes.md](reference/recipes.md) | How to model something: journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS. |
 | [reference/bench.md](reference/bench.md) | How to build a bench: find the states in the code, feed data at the boundary, verify each state in a browser, remove it. |
 | [SKILL.md](SKILL.md) | The agent skill itself. |
-| [PUBLISHING.md](PUBLISHING.md) | The plan and checklist for publishing to npm. |
+| [PUBLISHING.md](PUBLISHING.md) | How a new version gets to npm. |
+| [CHANGELOG.md](package/CHANGELOG.md) | What changed in each version. |
 
 Two things worth knowing before you ship a review build:
 
@@ -298,7 +295,7 @@ Two things worth knowing before you ship a review build:
 - **No new runtime dependencies.** The package has zero, and that's a feature.
 - **Edit the README at the repo root.** `package/README.md` is copied from it when the
   package is packed, and isn't tracked.
-- **`npm test`, `npm run typecheck` and `npm run build` all pass** before a PR.
+- **`npm run check` passes** before a PR. It is what CI and a release run.
 
 ```bash
 cd package
@@ -306,6 +303,7 @@ npm install
 npm test          # vitest, jsdom
 npm run typecheck
 npm run build     # tsup -> dist (esm + cjs + types)
+npm run check     # all of the above, plus package lint and an install of the tarball
 
 cd demo
 npm install

@@ -1,6 +1,6 @@
 # API reference
 
-**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.11.0.
+**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.12.0.
 
 For *how to model* a scenario space, read [recipes.md](recipes.md) first. This file is
 the exhaustive surface.
@@ -101,6 +101,21 @@ Every field takes the common keys below and a **required** `default`.
 
 `options` accepts `["a", "b"]` or `[{ value, label, note }]`. `control` is
 `"pills" | "select"` for enums and `"stepper" | "range"` for numbers.
+
+### The slider
+
+`control: "range"` draws a slider, and needs both `min` and `max` (it throws at boot
+without them). Press anywhere on the track to jump there, then drag; the drag keeps
+going if the pointer leaves the track. When the range divides into ten steps or
+fewer, a tick marks each one. The box beside the track shows the exact value and
+takes a typed one.
+
+```ts
+radius: { type: "number", label: "Card radius", default: 8, min: 0, max: 16, step: 4, control: "range" }
+```
+
+Use a slider to tune a value by feel (a radius, a width, a count you want to watch
+grow). Use the default stepper for a count you'll type exactly.
 
 `dom: { attribute, target? }` mirrors the value onto `<html>` (or `"body"`) as an
 attribute, so plain CSS can read it. On unmount the attribute goes back to whatever
@@ -252,7 +267,7 @@ long preset list render as a button that opens a listbox.
 
 | Button | Does |
 | --- | --- |
-| Copy | Copies the scenario as text: every control's value, changed ones marked with their default, then the query string that reproduces it. Paste it into a bug report or an agent's prompt. |
+| Copy | Copies the scenario as text: every control's value, changed ones marked with their default, then the query string that reproduces it. When anything has changed, it ends with the config edits that would make this the starting scenario (`machines.journey.initial: "keyMade"`, `fields.seats.default: 40`), written as an instruction a coding agent can carry out. Tune it in the panel, copy, paste into the agent, and it becomes the default. |
 | Reset | Resets the scenario, with a count of how many values are off their default. Disabled when nothing is. |
 | Pin | Keeps the panel open through clicks outside. |
 | Close | Collapses to the launcher. |
@@ -480,7 +495,7 @@ import { defineMachine, toSearch, fromSearch, resolve } from "prototype-machine/
 No React import anywhere in it. Use it in tests, scripts, or a non-React adapter:
 `compile`, `defineMachine`, `isDev`, `isValidFieldValue`, `optionsOf`, `ScenarioError`,
 `sectionsOf`, `visible`, `warn`, `has`, `suggest`, `describe`, `summarize`,
-`changedCount`, `presetsOf`, `STRESS_TEXT`, `STRESS_NUMBERS`, `isDate`, `clearStorage`,
+`toDefaults`, `changedCount`, `presetsOf`, `STRESS_TEXT`, `STRESS_NUMBERS`, `isDate`, `clearStorage`,
 `fromSearch`, `readStorage`, `resolve`, `toSearch`, `mergeSearch`, `diffFromDefaults`,
 `shapeOf`, `writeStorage(machine, key, snapshot)`, plus every type in the schema. The React entry additionally
 exports the snapping primitives (`snapTarget`, `cornerPosition`, `clampToViewport`,
@@ -488,8 +503,9 @@ exports the snapping primitives (`snapTarget`, `cornerPosition`, `clampToViewpor
 
 `describe(machine)` prints a text outline of the scenario space (states, legal moves,
 dead ends, fields, actions). `summarize(machine, snapshot)` prints the scenario on
-screen (what the panel's Copy button writes), and `changedCount(machine, snapshot)`
-counts the values off their default. `writeStorage` saves only values that differ from their
+screen, and `toDefaults(machine, snapshot)` writes the config edits that would make it
+the starting scenario (empty when nothing changed). The panel's Copy button writes
+both. `changedCount(machine, snapshot)` counts the values off their default. `writeStorage` saves only values that differ from their
 defaults, tagged with `shapeOf(machine)`; a stored shape that no longer matches is ignored.
 
 A compiled machine is itself usable without React. `scenario.contextOf(snapshot)` returns
@@ -545,6 +561,9 @@ anyway.
 | --- | --- |
 | `Esc` | Close the open dropdown; otherwise close the panel |
 | `↓` `↑` on a dropdown | Open it |
+| `←` `→` `↑` `↓` on a slider | One step down or up |
+| `shift` + arrows, `Page Up` `Page Down` on a slider | Ten steps |
+| `Home` `End` on a slider | Its minimum or maximum |
 | `↑` `↓` `←` `→` | Nudge the panel 8px while its handle has focus |
 | `shift` + arrows | Nudge 32px |
 | `←` `→` `↑` `↓` in a switcher bar | Previous or next state. Skips disabled states and wraps. |
