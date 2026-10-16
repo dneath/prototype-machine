@@ -21,7 +21,6 @@
  * which is why every rule is still prefixed and every property still stated. */
 
 const FONT = `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`
-const MONO = `ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace`
 
 const CSS = `
 :host {
@@ -223,15 +222,15 @@ const CSS = `
   padding: 16px 16px 8px;
   background: var(--pm-bg);
 }
+/* The one heading in sentence case and full white, so it reads above the
+   uppercase section titles, which read above the row labels. */
 .pm-title {
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--pm-muted);
+  color: var(--pm-fg);
 }
 .pm-head-actions { display: flex; align-items: center; gap: 2px; flex: none; }
 
@@ -276,11 +275,9 @@ const CSS = `
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--pm-muted);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pm-text);
 }
 /* A changed field gets a dot and a way back. The dot alone is the signal; the
    reset is a 16px target beside it, so it never competes with the control. */
@@ -467,18 +464,66 @@ const CSS = `
 .pm-listbox:focus-visible .pm-option[data-active="true"] { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6); }
 .pm-option-empty { padding: 5px 8px; color: var(--pm-muted); }
 
-.pm-range {
+/* The slider: a track you press anywhere and drag. The fill and the thumb move
+   by transform only, so a jump can animate without re-laying anything out. */
+.pm-slider {
+  position: relative;
   flex: 1;
   min-width: 0;
-  height: 16px;
-  accent-color: #fff;
-  background: transparent;
-  cursor: pointer;
-  -webkit-appearance: auto;
-  appearance: auto;
+  height: 28px;
+  border: 1px solid var(--pm-line);
+  border-radius: 6px;
+  background: var(--pm-field);
+  overflow: hidden;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
 }
-.pm-number-row { display: flex; align-items: center; gap: 8px; }
-.pm-number-value { min-width: 2.5em; text-align: right; color: var(--pm-text); font-variant-numeric: tabular-nums; font-family: ${MONO}; font-size: 11px; }
+.pm-slider:hover { border-color: var(--pm-line-strong); }
+.pm-slider:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.pm-slider-fill {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.14);
+  transform-origin: left center;
+  pointer-events: none;
+}
+.pm-slider-tick {
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 8px;
+  margin-top: -4px;
+  background: var(--pm-line);
+  pointer-events: none;
+}
+/* Inset by 3px each side, so the bar at either end stays inside the track. */
+.pm-slider-thumb {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  right: 3px;
+  pointer-events: none;
+}
+.pm-slider-thumb::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: -1px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--pm-fg);
+}
+.pm-slider-jump .pm-slider-fill,
+.pm-slider-jump .pm-slider-thumb { transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1); }
+.pm-number-row { display: flex; align-items: center; gap: 6px; }
+.pm-number-compact { flex: none; width: 64px; text-align: right; }
+/* The slider and the arrow keys already step it; spinners would crowd the box. */
+.pm-root .pm-number-compact::-webkit-inner-spin-button { display: none; }
 
 .pm-action {
   width: 100%;
@@ -614,7 +659,8 @@ const CSS = `
   .pm-switch[aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   .pm-switch[aria-disabled="true"] { color: GrayText; }
   .pm-pill[aria-pressed="true"], .pm-option[data-active="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
-  .pm-pill, .pm-trigger, .pm-text, .pm-number, .pm-textarea, .pm-action { border: 1px solid CanvasText; }
+  .pm-pill, .pm-trigger, .pm-text, .pm-number, .pm-textarea, .pm-action, .pm-slider { border: 1px solid CanvasText; }
+  .pm-slider-thumb::before { forced-color-adjust: none; background: Highlight; }
 }
 `
 

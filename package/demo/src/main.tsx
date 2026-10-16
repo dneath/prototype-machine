@@ -75,7 +75,7 @@ function Screen({ path, navigate }: { path: string; navigate: (to: string) => vo
         <p>A checklist, {p.connected} done. No traffic yet, so no metrics.</p>
       )}
 
-      <article className="card">
+      <article className="card" style={{ borderRadius: p.radius }}>
         <h2>{p.projectName}</h2>
         <p className="muted">
           {p.unread} unread · {p.region}

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 
-import { changedCount, summarize, warn } from "../core/index"
+import { changedCount, summarize, toDefaults, warn } from "../core/index"
 import { type PanelSection, sectionsOf } from "../core/index"
 import { type ActionApi, type ActionDef } from "../core/index"
 import { FieldRow, MachineRow, Pill, Row } from "./controls"
@@ -346,7 +346,11 @@ export function ScenarioPanel({
       showTools && toolsChanged(page)
         ? `\nPage: direction ${page.dir}, text ${Math.round(page.text * 100)}%, motion ${page.motion}`
         : ""
-    void copyText(summarize(p.machine, p.snapshot) + extra, layer.host).then((ok) => {
+    /* The summary for a person, then the config change for an agent, so one
+       paste works in a bug report and in a prompt. */
+    const defaults = toDefaults(p.machine, p.snapshot)
+    const text = summarize(p.machine, p.snapshot) + extra + (defaults ? `\n\n${defaults}` : "")
+    void copyText(text, layer.host).then((ok) => {
       if (ok) setCopied(true)
     })
   }

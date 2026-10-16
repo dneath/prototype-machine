@@ -64,3 +64,24 @@ export function summarize(machine: CompiledMachine, snapshot: Snapshot): string 
   lines.push(`Query: ${query ? `?${query}` : "(all defaults)"}`)
   return lines.join("\n")
 }
+
+/**
+ * What to change in the config so a fresh visitor starts in the scenario on
+ * screen, written as an instruction a coding agent can carry out. Tune a value
+ * in the panel, copy, paste, and it becomes the default. Values are written in
+ * full, never shortened, because an agent will type exactly what it is given.
+ * Empty when nothing differs from the defaults.
+ */
+export function toDefaults(machine: CompiledMachine, snapshot: Snapshot): string {
+  const diff = diffFromDefaults(machine, snapshot)
+  const lines: string[] = []
+  const { machines, fields } = machine.config
+  for (const [id, state] of Object.entries(diff.machines ?? {})) {
+    lines.push(`- machines.${id}.initial: ${JSON.stringify(state)} (was ${JSON.stringify(machines[id].initial)})`)
+  }
+  for (const [id, value] of Object.entries(diff.fields ?? {})) {
+    lines.push(`- fields.${id}.default: ${JSON.stringify(value)} (was ${JSON.stringify(fields[id].default)})`)
+  }
+  if (!lines.length) return ""
+  return ["To make this the starting scenario, change these in the defineMachine config:", ...lines].join("\n")
+}

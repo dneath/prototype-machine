@@ -6,6 +6,7 @@ import { optionsOf, presetsOf, type LabelledPreset } from "../core/index"
 import { SELECT_THRESHOLD, type AnyField, type MachineDef, type Primitive } from "../core/index"
 import { type Scenario } from "./provider"
 import { Select } from "./select"
+import { Slider } from "./slider"
 
 /* Past this many presets a row of pills costs more space than it saves, and
    the presets become a dropdown instead. */
@@ -252,23 +253,20 @@ export function FieldRow({
 
     case "number": {
       const n = typeof value === "number" ? value : def.default
+      /* Bounds are required for a range at boot, so they are numbers here. */
       const input =
         def.control === "range" ? (
           <div className="pm-number-row">
-            <input
-              className="pm-range"
-              type="range"
+            <Slider value={n} min={def.min!} max={def.max!} step={def.step ?? 1} label={label} onChange={set} />
+            <NumberInput
+              value={n}
               min={def.min}
               max={def.max}
               step={def.step ?? 1}
-              value={n}
-              onChange={(e) => set(Number(e.target.value))}
-              aria-label={label}
-              aria-valuetext={String(n)}
+              label={`${label}, exact value`}
+              onCommit={set}
+              compact
             />
-            <span className="pm-number-value" aria-hidden="true">
-              {n}
-            </span>
           </div>
         ) : (
           <NumberInput
@@ -365,6 +363,7 @@ function NumberInput({
   step,
   label,
   onCommit,
+  compact,
 }: {
   value: number
   min?: number
@@ -372,11 +371,13 @@ function NumberInput({
   step: number
   label: string
   onCommit: (next: number) => void
+  /** The narrow box beside a slider. */
+  compact?: boolean
 }) {
   const [draft, setDraft] = React.useState<string | null>(null)
   return (
     <input
-      className="pm-number"
+      className={compact ? "pm-number pm-number-compact" : "pm-number"}
       type="number"
       inputMode="decimal"
       min={min}
