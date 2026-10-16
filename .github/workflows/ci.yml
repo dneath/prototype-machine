@@ -1,0 +1,45 @@
+# Runs on every push to main and every pull request: the same checks a
+# release runs, so a tag never meets a surprise.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22, 24]
+    defaults:
+      run:
+        working-directory: package
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: package/package-lock.json
+      - run: npm ci
+      # Tests, typecheck, build, smoke, package lint, and an install of the
+      # packed tarball into a throwaway app.
+      - run: npm run check
+
+  demo:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: package/demo
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run build
