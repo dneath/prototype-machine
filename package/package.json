@@ -70,7 +70,7 @@
     "reference"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsup",
+    "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",

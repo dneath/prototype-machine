@@ -1,7 +1,13 @@
 /* Runs before `npm pack` and `npm publish` (and with --clean, after them).
  *
- * The docs live at the repo root, one level above this package. This copies
- * them in so they ship:
+ * First it makes sure there is a build to ship. `npm pack` does not build, so
+ * on a fresh clone it would pack a tarball with no dist/, which installs
+ * cleanly and fails on its first import. When dist/ is missing or older than
+ * anything it is built from, this builds it. A dist/ that is already fresh
+ * (as after `npm run build` in `npm run check`) is left alone.
+ *
+ * Then it copies the docs, which live at the repo root, one level above this
+ * package, so they ship:
  *
  *   README.md   with relative links made absolute, because npmjs.com resolves
  *               a relative link against the repository and this package sits
@@ -11,7 +17,8 @@
  *
  * None of the copies is tracked: package/.gitignore lists them. */
 
-import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { execSync } from "node:child_process"
+import { cpSync, existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -23,6 +30,24 @@ const COPIES = ["README.md", "SKILL.md", "reference"]
 if (process.argv.includes("--clean")) {
   for (const name of COPIES) rmSync(join(pkgDir, name), { recursive: true, force: true })
   process.exit(0)
+}
+
+/* The newest modification time under a path, or 0 if it does not exist. */
+function newest(path) {
+  if (!existsSync(path)) return 0
+  const stat = statSync(path)
+  if (!stat.isDirectory()) return stat.mtimeMs
+  return Math.max(0, ...readdirSync(path).map((name) => newest(join(path, name))))
+}
+
+/* The oldest of the built entry points: a build interrupted halfway is stale. */
+const ENTRIES = ["index.js", "index.cjs", "production.js", "panel.js", "core/index.js"]
+const built = Math.min(...ENTRIES.map((entry) => newest(join(pkgDir, "dist", entry))))
+const source = Math.max(newest(join(pkgDir, "src")), newest(join(pkgDir, "tsup.config.ts")), newest(join(pkgDir, "package.json")))
+if (built < source) {
+  console.log("prepack: dist/ is missing or older than src/, so building it first.")
+  /* Through a shell, so `npm` resolves to npm.cmd on Windows. */
+  execSync("npm run build", { cwd: pkgDir, stdio: "inherit" })
 }
 
 const pkg = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8"))

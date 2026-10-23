@@ -50,6 +50,13 @@ surface follows ibelick's
 - `checkStates`, `subscribeUrl` and `writeSearchParams` are shared by the bench and the
   canvas, so both refuse the same configs with the same messages.
 
+### Fixed
+- `npm pack` on a fresh clone packed a tarball with no `dist/`, which installed and then
+  failed on its first import. Packing now builds first when `dist/` is missing or older
+  than its sources, and leaves a fresh build alone.
+- `npm run build` works on Windows: it cleared `dist/` with `rm -rf`, which `cmd.exe`
+  does not have.
+
 ## 0.12.0
 
 Ready for npm, plus three things learned from Josh Puckett's
