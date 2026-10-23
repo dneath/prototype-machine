@@ -91,3 +91,16 @@ export const EyeOffIcon = ({ size }: { size?: number }) => (
     <path d="m2 2 20 20" />
   </Svg>
 )
+
+/* Zoom, for the canvas bar. */
+export const MinusIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="M5 12h14" />
+  </Svg>
+)
+
+export const PlusIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="M5 12h14M12 5v14" />
+  </Svg>
+)

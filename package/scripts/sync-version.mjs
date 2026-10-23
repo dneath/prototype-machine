@@ -21,6 +21,7 @@ const VERSIONED = [
   ["SKILL.md", new RegExp(String.raw`(This guidance targets \*\*prototype-machine )${SEMVER}(\*\*)`)],
   ["reference/api.md", new RegExp(String.raw`(Targets prototype-machine )${SEMVER}(\.)`)],
   ["reference/bench.md", new RegExp(String.raw`(Targets prototype-machine )${SEMVER}(\.)`)],
+  ["reference/canvas.md", new RegExp(String.raw`(Targets prototype-machine )${SEMVER}(\.)`)],
   ["reference/control-types.json", new RegExp(String.raw`(catalogue for prototype-machine )${SEMVER}(\.)`)],
   ["reference/control-types.json", new RegExp(String.raw`("version": ")${SEMVER}(")`)],
 ]

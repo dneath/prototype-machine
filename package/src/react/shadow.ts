@@ -92,9 +92,10 @@ export function useShadowLayer(
   active: boolean,
   zIndex: number,
   nonce?: string,
-  /** Which tool owns this layer, as `data-pm-layer`. The panel and a state
-   *  switcher each get their own host, so a test can tell them apart. */
-  kind: "panel" | "switcher" = "panel",
+  /** Which tool owns this layer, as `data-pm-layer`. The panel, a state
+   *  switcher and a canvas each get their own host, so a test can tell them
+   *  apart. */
+  kind: "panel" | "switcher" | "canvas" = "panel",
 ): ShadowLayer | null {
   const [layer, setLayer] = React.useState<ShadowLayer | null>(null)
 

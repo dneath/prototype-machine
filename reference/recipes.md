@@ -17,6 +17,7 @@ decision is the one that matters; the wiring is mechanical.
 - [Recipe 7: the app writing to the scenario](#recipe-7-the-app-writing-to-the-scenario)
 - [Recipe 8: stress-testing a layout](#recipe-8-stress-testing-a-layout)
 - [Recipe 9: one component, every state](#recipe-9-one-component-every-state)
+- [Recipe 10: every state at once, on a canvas](#recipe-10-every-state-at-once-on-a-canvas)
 - [Worked example: the whole space](#worked-example-the-whole-space)
 
 ---
@@ -360,7 +361,44 @@ Do not combine rows unless the code branches on both. `member` with `paged` is a
 only if the member view changes the paged layout.
 
 The workflow (scope, fixtures at the data boundary, a check of each state in a browser,
-hand-over, removal) is in [bench.md](bench.md).
+hand-over, removal) is in [bench.md](bench.md). To see every state at once, with the
+same fixtures, read Recipe 10.
+
+---
+
+## Recipe 10: every state at once, on a canvas
+
+A bench shows one state per URL. A canvas shows all of them at once, each in every
+frame, and flags the frames whose content overflows its container or is cut off. It
+takes the bench's `states`, `missing` and fixtures unchanged:
+
+```tsx
+<StateCanvas states={STATES} missing={MISSING} width={880} frames="stress" label="Request log">
+  {(state) => <RequestLog {...FIXTURES[state]} />}
+</StateCanvas>
+```
+
+`frames="stress"` puts every state in the container as shipped, at 320px, squeezed by
+a sidebar, very wide, and right to left. That is the container half of a stress pass with
+no fixtures written. The content half (long names, RTL text, a thousand rows) is still
+states, with `STRESS_TEXT` in the fixtures: a frame changes what the component is put
+in, never what it is fed.
+
+The same canvas shows a whole screen in every state the scenario declares. Rows are one
+machine's states and columns another's, and each frame pins its scenario:
+
+```tsx
+<StateCanvas states={statesOf(scenario, "journey")} frames={statesOf(scenario, "data")} width={1280}>
+  {(journey, data) => (
+    <PinnedScenario machine={scenario} values={{ journey, data }} path="/overview">
+      <Overview />
+    </PinnedScenario>
+  )}
+</StateCanvas>
+```
+
+Cross two machines only when the screen branches on both. The workflow (which axes to
+keep, looking, reporting what broke, removal) is in [canvas.md](canvas.md).
 
 ---
 

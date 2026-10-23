@@ -1,0 +1,95 @@
+import { useScenario } from "prototype-machine"
+
+import { scenario } from "./scenario"
+
+export const ROUTES = ["/overview", "/guardrails", "/signin", "/states/request-log", "/states/request-log/canvas", "/states/overview/canvas"]
+
+export function Screen({ path, navigate }: { path: string; navigate: (to: string) => void }) {
+  /* Exactly how a real screen reads it: flat values off one hook, no knowledge
+     that a control panel exists. */
+  const p = useScenario(scenario)
+
+  return (
+    <main>
+      <nav>
+        {ROUTES.map((route) => (
+          <button
+            key={route}
+            type="button"
+            data-current={route === path}
+            onClick={() => navigate(route)}
+          >
+            {route}
+          </button>
+        ))}
+      </nav>
+
+      <h1>{path}</h1>
+
+      {p.data === "loading" ? (
+        <p className="muted">Skeletons would be here.</p>
+      ) : p.data === "error" ? (
+        <p className="bad">Something went wrong loading this.</p>
+      ) : path === "/guardrails" ? (
+        <p>
+          {p.hasEvents && p.data !== "empty"
+            ? "A table of blocked and flagged requests."
+            : "Nothing has been blocked or flagged. This is the teaching empty state."}
+        </p>
+      ) : path === "/signin" ? (
+        <p>
+          {p.signInFailure === "none"
+            ? "The sign-in form."
+            : p.signInFailure === "credentials"
+              ? "That username and password did not match."
+              : p.signInFailure === "disabled"
+                ? "This account has been disabled."
+                : "The directory is not answering. Try again shortly."}
+        </p>
+      ) : p.hasTraffic && p.data !== "empty" ? (
+        <p>A dashboard of real usage. {p.seats} seats.</p>
+      ) : (
+        <p>A checklist, {p.connected} done. No traffic yet, so no metrics.</p>
+      )}
+
+      <article className="card" style={{ borderRadius: p.radius }}>
+        <h2>{p.projectName}</h2>
+        <p className="muted">
+          {p.unread} unread · {p.region}
+        </p>
+      </article>
+
+      {p.modal ? (
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="Host modal">
+          <div className="sheet">
+            <p>A host modal at z-index 9999. The panel stays above it and clickable.</p>
+            <select aria-label="Host select" defaultValue="a">
+              <option value="a">The host's own native select</option>
+            </select>
+          </div>
+        </div>
+      ) : null}
+
+      <dl>
+        <div><dt>journey</dt><dd>{p.journey}</dd></div>
+        <div><dt>step</dt><dd>{p.step}</dd></div>
+        <div><dt>keyIssued</dt><dd>{String(p.keyIssued)}</dd></div>
+        <div><dt>firstRequestAt</dt><dd>{p.firstRequestAt ?? "null"}</dd></div>
+        <div><dt>role</dt><dd>{p.role}</dd></div>
+        <div><dt>signInFailure</dt><dd>{p.signInFailure}</dd></div>
+        <div><dt>data</dt><dd>{p.data}</dd></div>
+        <div><dt>hasEvents</dt><dd>{String(p.hasEvents)}</dd></div>
+        <div><dt>density</dt><dd>{p.density}</dd></div>
+        <div><dt>seats</dt><dd>{p.seats}</dd></div>
+        <div><dt>hasTraffic</dt><dd>{String(p.hasTraffic)}</dd></div>
+        <div><dt>projectName</dt><dd>{JSON.stringify(p.projectName).slice(0, 60)}</dd></div>
+      </dl>
+
+      <p className="muted">
+        The journey is a ladder: from <b>First run</b> only <b>Key made</b> and{" "}
+        <b>Parked</b> are legal, so <b>Active</b> is drawn but dead. Open the
+        controls with the button in the corner.
+      </p>
+    </main>
+  )
+}

@@ -10,9 +10,10 @@ import {
   has,
   isDev,
   isValidFieldValue,
+  ScenarioError,
   suggest,
 } from "../core/index"
-import { type Env, type Primitive } from "../core/index"
+import { type Env, type FieldValues, type MachineCursors, type Primitive } from "../core/index"
 import {
   clearStorage,
   fromSearch,
@@ -105,17 +106,33 @@ export interface ScenarioProviderProps {
 
 const liveKeys = new Map<string, number>()
 
-export function ScenarioProvider({
-  machine,
-  storageKey,
-  path = null,
-  navigate,
-  env: extraEnv,
-  enabled,
-  syncUrl = false,
-  syncTabs = false,
-  children,
-}: ScenarioProviderProps) {
+export function ScenarioProvider(props: ScenarioProviderProps) {
+  return useProvider(props)
+}
+
+/* A layout effect in the browser, so a pinned scenario's attributes are on its wrapper
+   before paint; a plain effect on the server, where React 18 warns. */
+const useClientLayoutEffect = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect
+
+/* The provider's body, shared by <ScenarioProvider> and <PinnedScenario>. With
+   `pinned`, the scenario starts from those values and nothing else: no
+   storage, no URL, no other tabs, no attributes on <html>. Several can
+   then sit on one page, each in its own state, without one overwriting what
+   another saved or mirrored. */
+function useProvider(
+  {
+    machine,
+    storageKey,
+    path = null,
+    navigate,
+    env: extraEnv,
+    enabled,
+    syncUrl = false,
+    syncTabs = false,
+    children,
+  }: ScenarioProviderProps,
+  pinned?: PartialSnapshot,
+): React.ReactElement {
   const m = machine as CompiledMachine
   const hydrated = useHydrated()
 
@@ -138,17 +155,18 @@ export function ScenarioProvider({
      storage layer is skipped, so this browser's leftovers cannot leak in. */
   const [urlVersion, setUrlVersion] = React.useState(0)
   const layers = React.useMemo<ReadonlyArray<PartialSnapshot>>(() => {
+    if (pinned) return [pinned]
     if (!hydrated) return []
     const search = window.location.search
     if (hasScenarioParams(m, search)) return [fromSearch(m, search)]
     return [readStorage(m, storageKey)]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, m, storageKey, urlVersion])
+  }, [pinned, hydrated, m, storageKey, urlVersion])
 
   /* A scenario that arrived by URL is persisted straight away, so it survives
      the query being stripped or the tab being reloaded. */
   React.useEffect(() => {
-    if (!hydrated) return
+    if (!hydrated || pinned) return
     const search = window.location.search
     if (!hasScenarioParams(m, search)) return
     writeStorage(m, storageKey, resolve(m, layers))
@@ -156,7 +174,7 @@ export function ScenarioProvider({
       const url = window.location.pathname + mergeSearch(m, search, null) + window.location.hash
       window.history.replaceState(window.history.state, "", url)
     }
-  }, [hydrated, m, storageKey, layers, syncUrl])
+  }, [hydrated, pinned, m, storageKey, layers, syncUrl])
 
   /* Back/forward with a different query: take it as the new scenario. */
   React.useEffect(() => {
@@ -179,7 +197,7 @@ export function ScenarioProvider({
      or typing does not hit storage on every event, and flushed on pagehide. */
   const pending = React.useRef<(() => void) | null>(null)
   React.useEffect(() => {
-    if (!hydrated || edits === initialEdits.current) return
+    if (!hydrated || pinned || edits === initialEdits.current) return
     const write = () => {
       pending.current = null
       writeStorage(m, storageKey, snapshot)
@@ -187,10 +205,10 @@ export function ScenarioProvider({
     pending.current = write
     const timer = window.setTimeout(write, 150)
     return () => window.clearTimeout(timer)
-  }, [hydrated, m, storageKey, snapshot, edits])
+  }, [hydrated, pinned, m, storageKey, snapshot, edits])
 
   React.useEffect(() => {
-    if (!isDev) return
+    if (!isDev || pinned) return
     const count = (liveKeys.get(storageKey) ?? 0) + 1
     liveKeys.set(storageKey, count)
     if (count > 1) {
@@ -201,7 +219,7 @@ export function ScenarioProvider({
       if (left <= 0) liveKeys.delete(storageKey)
       else liveKeys.set(storageKey, left)
     }
-  }, [storageKey])
+  }, [storageKey, pinned])
 
   /* Another tab saved a scenario under the same key: follow it. */
   React.useEffect(() => {
@@ -240,8 +258,14 @@ export function ScenarioProvider({
 
   /* Fields that mirror themselves onto the DOM, for CSS that reads attributes
      rather than props: the generalisation of a hand-rolled density toggle. */
-  React.useEffect(() => {
+  /* A pinned scenario mirrors onto its own wrapper instead, so two on one
+     page can each be compact or dark. CSS that reads `[data-density]` matches
+     the wrapper; CSS pinned to `:root[data-density]` does not. */
+  const pinnedRef = React.useRef<HTMLDivElement>(null)
+  const bindsDom = Object.values(m.config.fields).some((def) => "dom" in def && def.dom)
+  useClientLayoutEffect(() => {
     if (typeof document === "undefined") return
+    if (pinned && !pinnedRef.current) return
     /* What the page had before, so unmounting puts it back rather than
        deleting an attribute the product's own markup set (a server-rendered
        `data-theme`, a `dir` from the locale). */
@@ -249,7 +273,7 @@ export function ScenarioProvider({
     for (const [id, def] of Object.entries(m.config.fields)) {
       const binding = "dom" in def ? def.dom : undefined
       if (!binding) continue
-      const el = binding.target === "body" ? document.body : document.documentElement
+      const el = pinned ? pinnedRef.current : binding.target === "body" ? document.body : document.documentElement
       if (!el) continue
       const before = el.getAttribute(binding.attribute)
       try {
@@ -266,7 +290,7 @@ export function ScenarioProvider({
         else el.setAttribute(attribute, before)
       }
     }
-  }, [m, context])
+  }, [m, context, pinned])
 
   const env = React.useMemo<Env>(() => ({ path, ...extraEnv }), [path, extraEnv])
 
@@ -373,6 +397,11 @@ export function ScenarioProvider({
       /* Reset clears the session's edits AND the stored scenario, so it means
          the same thing on this load and the next one. */
       reset: () => {
+        /* A pinned scenario goes back to the values it was pinned to. */
+        if (pinned) {
+          setEdits({})
+          return
+        }
         clearStorage(storageKey)
         const fresh = m.initial()
         setEdits({ machines: { ...fresh.machines }, fields: { ...fresh.fields } })
@@ -390,13 +419,14 @@ export function ScenarioProvider({
         }
       },
       hydrated,
-      enabled: enabled ?? isDev,
+      /* A panel inside a pinned scenario would drive one of many. */
+      enabled: pinned ? false : (enabled ?? isDev),
       open,
       setOpen,
     }
   }, [
     context, m, snapshot, storageKey, setEdits,
-    env, navigate, hydrated, enabled, open,
+    env, navigate, hydrated, enabled, open, pinned,
   ])
 
   const store = React.useState(createStore)[0]
@@ -407,9 +437,111 @@ export function ScenarioProvider({
 
   return (
     <StoreCtx.Provider value={store}>
-      <Ctx.Provider value={api}>{children}</Ctx.Provider>
+      <Ctx.Provider value={api}>
+        {pinned && bindsDom ? (
+          <div ref={pinnedRef} data-pinned-scenario="" style={{ display: "contents" }}>
+            {children}
+          </div>
+        ) : (
+          children
+        )}
+      </Ctx.Provider>
     </StoreCtx.Provider>
   )
+}
+
+export interface PinnedScenarioProps<M, F, D> {
+  machine: Machine<M, F, D>
+  /**
+   * Where this scenario starts: machine states and field values, flat,
+   * the way `useScenario()` reads them. Anything left out is at its default.
+   * Keys a machine assigns cannot be pinned; pin the machine instead.
+   */
+  values?: Partial<MachineCursors<M> & FieldValues<F>>
+  /** Current route, for `when` predicates. */
+  path?: string | null
+  /** Router push, for declared actions. */
+  navigate?: (to: string) => void
+  /** Anything else `when` predicates should see. */
+  env?: Record<string, unknown>
+  children?: React.ReactNode
+}
+
+/**
+ * A scenario pinned to one set of values, for showing a screen in a state
+ * without the panel: in a canvas frame, beside the same screen in another state.
+ *
+ * ```tsx
+ * <PinnedScenario machine={scenario} values={{ journey: "keyMade", data: "empty" }}>
+ *   <Overview />
+ * </PinnedScenario>
+ * ```
+ *
+ * It reads no storage and no URL and writes neither, so any number can sit on
+ * one page. `go` and `set` still work inside it, for clicking through the
+ * product, and `reset` goes back to `values`. Fields that mirror onto the DOM
+ * set their attribute on a `display: contents` wrapper around the children,
+ * not on `<html>`.
+ */
+export function PinnedScenario<M, F, D>({ machine, values, ...rest }: PinnedScenarioProps<M, F, D>) {
+  const m = machine as unknown as CompiledMachine
+  /* Keyed by content, so `values={{ data: state }}` written inline does not
+     re-pin on every render, and a real change starts it afresh. */
+  const key = JSON.stringify(values ?? {})
+  const pinned = React.useMemo(() => pin(m, values as Record<string, unknown> | undefined), [m, key])
+  return <PinnedProvider key={key} machine={m} pinned={pinned} {...rest} />
+}
+
+function PinnedProvider({
+  pinned,
+  ...props
+}: Omit<ScenarioProviderProps, "storageKey"> & { pinned: PartialSnapshot }) {
+  return useProvider({ ...props, storageKey: "" }, pinned)
+}
+
+/* Flat values into a snapshot, refusing anything that would show a screen in
+   a state other than the one its label claims. A canvas labels each frame by
+   what it was pinned to, so a pin that silently fell back to the default
+   would be a lie with a caption. */
+function pin(m: CompiledMachine, values: Record<string, unknown> | undefined): PartialSnapshot {
+  const machines: Record<string, string> = {}
+  const fields: Record<string, Primitive> = {}
+  for (const [key, value] of Object.entries(values ?? {})) {
+    if (has(m.config.machines, key)) {
+      const states = Object.keys(m.config.machines[key].states)
+      if (typeof value !== "string" || !states.includes(value)) {
+        throw new ScenarioError(
+          `<PinnedScenario> pins "${key}" to ${JSON.stringify(value)}, which is not one of its states.${
+            typeof value === "string" ? suggest(value, states) : ""
+          } Known: ${states.join(", ")}.`,
+        )
+      }
+      machines[key] = value
+      continue
+    }
+    if (has(m.config.fields, key)) {
+      if (!isValidFieldValue(m.config.fields[key], value)) {
+        throw new ScenarioError(`<PinnedScenario> pins "${key}" to ${JSON.stringify(value)}, which that field would refuse to hold.`)
+      }
+      fields[key] = value
+      continue
+    }
+    if (has(m.ownerOf, key)) {
+      throw new ScenarioError(
+        `<PinnedScenario> cannot pin "${key}": the "${m.ownerOf[key]}" machine writes it. Pin "${m.ownerOf[key]}" to the state that assigns the value you want.`,
+      )
+    }
+    throw new ScenarioError(
+      `<PinnedScenario> pins "${key}", which is not a machine or a field.${suggest(key, [
+        ...Object.keys(m.config.machines),
+        ...Object.keys(m.config.fields),
+      ])}`,
+    )
+  }
+  return {
+    ...(Object.keys(machines).length ? { machines } : {}),
+    ...(Object.keys(fields).length ? { fields } : {}),
+  }
 }
 
 export { Ctx as ScenarioContext }

@@ -3,7 +3,8 @@
 A dev-only control panel for React prototypes. Declare the states your prototype can be
 in (empty, loading, first run, admin, trial expired) and get a panel that drives it.
 Combinations you never declared can't be set. A bench shows one component in every
-state it can be in, one link per state.
+state it can be in, one link per state. A canvas shows all of them at once, at every
+width, and marks the ones that break.
 
 The panel and the switcher render nothing in production.
 
@@ -159,6 +160,55 @@ Open `/states/request-log?__state=empty`. A bar at the bottom center lists the s
 
 The full workflow is in [reference/bench.md](reference/bench.md).
 
+## Every state at once
+
+A canvas takes the same states and fixtures as a bench and lays them all out on one
+surface you pan and zoom: a row per state, a column per **frame**. A frame is a
+condition the component is put in from outside, without touching it. `frames="stress"`
+is the built-in set: as shipped, 320px, squeezed by a sidebar, very wide, and right to
+left.
+
+```tsx
+// src/states/request-log/canvas.tsx
+import { StateCanvas } from "prototype-machine"
+import { RequestLog } from "../../components/request-log"
+import { FIXTURES, MISSING, STATES } from "./fixtures"
+
+export function RequestLogCanvas() {
+  return (
+    <StateCanvas states={STATES} missing={MISSING} width={880} frames="stress" label="Request log">
+      {(state) => <RequestLog {...FIXTURES[state]} />}
+    </StateCanvas>
+  )
+}
+```
+
+- **Overflow is measured, not guessed.** A frame whose content is wider than its
+  container, or that hides content behind `overflow: hidden` without an ellipsis or a
+  scrollbar, gets amber crop marks and a note: `134px too wide`, `Cuts off content`. The
+  bar counts them; click the count to step through them.
+- **Names stay on screen.** States run down the left and frames along the top, frozen to
+  the edges like a spreadsheet's headers, so a frame you have zoomed into is still named.
+  Click a state, a frame, or both: `?__state=long&__frame=narrow` opens on that frame.
+- **Page tools apply to every frame at once.** Text 200% and Pause motion are in the bar.
+- **A screen in every state of the journey.** `statesOf` lists a machine's states, and
+  `PinnedScenario` shows a screen in one of them, any number to a page:
+
+```tsx
+<StateCanvas states={statesOf(scenario, "journey")} frames={statesOf(scenario, "data")} width={1280}>
+  {(journey, data) => (
+    <PinnedScenario machine={scenario} values={{ journey, data }} path="/overview">
+      <Overview />
+    </PinnedScenario>
+  )}
+</StateCanvas>
+```
+
+Drag empty space or scroll to move; pinch or `Ctrl`/`Cmd` and scroll to zoom. With the
+canvas focused, arrow keys move, `+` and `-` zoom, `1` fits everything and `0` is 100%.
+The workflow, adapted from Jakub Krehel's break skill, is in
+[reference/canvas.md](reference/canvas.md).
+
 ## What you get
 
 **Out of the way.** The panel and the bench bar keep clear of bars fixed to the top or
@@ -268,13 +318,26 @@ With it loaded, these are the kinds of things to ask for.
 > design shows but the code cannot reach as missing. Check each state in a browser, then
 > give me the URL and the list of states.
 
+**Break a component**
+
+> Break the RequestLog on a canvas. Reuse the bench's states and fixtures, add a state
+> for the longest user and model ids the gateway accepts, and use the stress frames.
+> Open it once in a browser, look at every frame, and give me a table of what broke,
+> each frame as a link.
+
+**Every state of a screen**
+
+> Make a canvas of the overview screen with the journey's states as rows and the data
+> states as columns, each frame pinned with PinnedScenario.
+
 ## Documentation
 
 | Doc | What it covers |
 | --- | --- |
-| [reference/api.md](reference/api.md) | Every option and type: `defineMachine`, fields, provider, panel, `StateBench`, `useScenario`, the core entry, errors. |
+| [reference/api.md](reference/api.md) | Every option and type: `defineMachine`, fields, provider, panel, `StateBench`, `StateCanvas`, `PinnedScenario`, `useScenario`, the core entry, errors. |
 | [reference/recipes.md](reference/recipes.md) | How to model something: journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS. |
 | [reference/bench.md](reference/bench.md) | How to build a bench: find the states in the code, feed data at the boundary, verify each state in a browser, remove it. |
+| [reference/canvas.md](reference/canvas.md) | How to break a component on a canvas: which axes apply, frames, a screen in every state, what is measured, reporting what broke. |
 | [SKILL.md](SKILL.md) | The agent skill itself. |
 | [PUBLISHING.md](PUBLISHING.md) | How a new version gets to npm. |
 | [CHANGELOG.md](package/CHANGELOG.md) | What changed in each version. |

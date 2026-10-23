@@ -34,7 +34,9 @@ end.
 | "What does the product look like when the account is in state X?" | `defineMachine` + `ScenarioPanel` |
 
 **Recommendation:** use a bench for one component and the panel for a journey across
-screens. They work together: a bench page does not need the provider.
+screens. They work together: a bench page does not need the provider. To see every
+state at once, in several widths, build a canvas from the same fixtures:
+[canvas.md](canvas.md).
 
 ## 2. Scope one component
 

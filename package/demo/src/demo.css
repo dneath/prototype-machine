@@ -12,7 +12,7 @@ body {
 }
 
 main { max-width: 720px; margin: 0 auto; padding: 40px 24px 120px; }
-nav { display: flex; gap: 8px; margin-bottom: 24px; }
+nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
 nav button {
   padding: calc(var(--pad) / 2) var(--pad);
   border: 1px solid currentColor;

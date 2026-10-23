@@ -15,6 +15,8 @@ the exhaustive surface.
 - [ScenarioPanel](#scenariopanel)
 - [StateBench](#statebench)
 - [useStateParam](#usestateparam)
+- [StateCanvas](#statecanvas)
+- [PinnedScenario](#pinnedscenario)
 - [useScenario](#usescenario)
 - [The core entry](#the-core-entry)
 - [Errors and warnings](#errors-and-warnings)
@@ -450,6 +452,156 @@ The hook under `StateBench`, for a bench with its own layout.
 keeps other parameters and the hash. A URL value that is not in the ids warns and gives
 `initial`.
 
+## StateCanvas
+
+```tsx
+import { StateCanvas } from "prototype-machine"
+
+<StateCanvas states={STATES} missing={MISSING} width={880} frames="stress" label="Request log">
+  {(state, frame) => <RequestLog {...FIXTURES[state]} />}
+</StateCanvas>
+```
+
+One component in every state at once, each state in every frame, on a surface you pan
+and zoom. A row per state, a column per frame. It needs no provider. For the workflow,
+read [canvas.md](canvas.md).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `states` | `Record<string, string \| { label?, note? }>` | None | **Required.** Every state, one row each, in this order. The shape `StateBench` takes. |
+| `children` | `(state, frame) => ReactNode` | None | **Required.** Renders the real component in one state, in one frame. Called once for each pair. |
+| `missing` | same shape as `states` | None | States the design shows but the code cannot reach. Each gets a row with a placeholder that says so, never a render. |
+| `frames` | `Record<string, string \| CanvasFrameDef> \| "stress"` | one frame at `width` | The columns. `"stress"` is the built-in set, below. |
+| `width` | `number \| string` | `1280` | The component's width in production, and the width of any frame that names none. A length, never a percentage. |
+| `label` | `string` | `"States"` | The canvas's accessible name, and its bar's. Also part of the key its camera is saved under. |
+| `param` | `string` | `"__state"` | The search parameter naming the state in focus. |
+| `frameParam` | `string` | `"__frame"` | The search parameter naming the frame in focus. Exported as `FRAME_PARAM`. |
+| `zIndex` | `number` | `2147483000` | Stacking order of the names and the bar. The surface sits 1000 below. |
+| `nonce` | `string` | None | Set on the canvas's `<style>`, for a strict CSP. |
+| `enabled` | `boolean` | `NODE_ENV !== "production"` | Off, every frame renders in a plain grid with no camera, names or bar. |
+
+### Frames
+
+A frame is a condition the component is put in from outside. It changes the container,
+never the data.
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `label` | `string` | The column's name. Defaults to the id. |
+| `note` | `string` | The name's tooltip. |
+| `width` | `number \| string` | The container's width. Defaults to the canvas's `width`. |
+| `minHeight` | `number \| string` | The frame is at least this tall. |
+| `dir` | `"ltr" \| "rtl"` | Text direction on the container. |
+| `attrs` | `Record<string, string>` | Attributes on the container, for CSS that reads them: `{ "data-theme": "dark" }`, `{ class: "dark" }`. Selectors pinned to `:root` or `html` cannot see them. |
+| `background` | `string` | The frame's background. Defaults to the page's own. |
+| `squeeze` | `number \| string` | Room a hatched sibling takes from the container, as a flex neighbour would. The component keeps its content's minimum width, so content that will not shrink runs past. |
+
+`frames="stress"` is `stressFrames(width)`, exported:
+
+| Id | Label | Container |
+| --- | --- | --- |
+| `shipped` | the width | as wide as `width` |
+| `narrow` | `320px` | 320px. Left out when `width` is 320 or less. |
+| `squeezed` | `Squeezed` | `width`, with a sibling taking 40% |
+| `wide` | `1440px` | 1440px, or one and a half times `width` when that is wider |
+| `rtl` | `Right to left` | `width`, with `dir="rtl"` |
+
+A frame's container sets its width, its minimum height, its direction, its attributes,
+its background and `contain: layout`, which makes it the containing block for anything
+the component fixes in place: a modal's backdrop covers its own frame. Nothing is
+clipped; content wider than the frame runs past its edge. Media queries read the
+viewport, not the frame, and a portal into `<body>` draws outside it.
+
+### The surface
+
+The canvas fills the viewport with a dark surface. The frames are the product's: they
+render in the page's light DOM and inherit its fonts and colours, and the camera moves
+them with one transform. Everything the canvas adds is in its own shadow root
+(`data-pm-layer="canvas"`), drawn at the same size at any zoom:
+
+- **Names.** The states down the left, the frames along the top. They freeze to the
+  screen's edges, like a spreadsheet's headers, so a frame you have zoomed into is still
+  named. A name is a toggle: a state's name focuses its row, a frame's name its column,
+  both together one frame. Names that would land on each other give way, in order.
+- **Crop marks** just outside each frame's corners show where its container ends, without
+  a border that could pass for the component's own. The frame in focus has violet marks.
+- **Findings.** Each frame is measured once the layout settles. A frame whose content is
+  wider than its container, or that holds a box hiding content without an ellipsis or a
+  scrollbar, gets amber marks and a note under its corner (`134px too wide`, `Cuts off
+  content`).
+- **The bar**, at the bottom: zoom out, the zoom level (click it for 100%), zoom in, Fit,
+  Text 200%, Pause motion, and the count of frames with findings. Click the count to step
+  through them.
+
+The first view is the frame or row a link names, else where this canvas was left, else
+everything. The camera is saved under
+`` `prototype-machine:canvas:${pathname}:${label}` `` as `{ v: 1, x, y, z }`.
+
+### Moving around
+
+| Input | Does |
+| --- | --- |
+| Drag empty space, or the middle button anywhere | Pan |
+| Wheel or two-finger scroll | Pan. A box inside a frame that can scroll that way scrolls instead. |
+| `Ctrl` or `Cmd` + wheel, a trackpad pinch, a two-finger pinch | Zoom around the pointer |
+| Tab into a frame | The camera moves to show what has focus |
+
+A drag that starts on a frame belongs to the component, so buttons click and text
+selects. Zoom runs from 5% to 400%.
+
+### The URL
+
+`?__state=empty` opens the canvas on that row, `?__frame=narrow` on that column, and both
+on one frame. Clicking a name writes them with `replaceState`, keeping other parameters
+and the hash. Fit removes them. Back and forward are followed. A value the canvas does
+not have warns, with a suggestion.
+
+### For tests
+
+| Attribute | On | Value |
+| --- | --- | --- |
+| `data-state-canvas` | the grid | |
+| `data-state-canvas-frame` | each frame | with `data-state`, `data-frame` and an `aria-label` of `"State, Frame"` |
+| `data-state-canvas-missing` | each missing state's placeholder | with `data-state` |
+| `data-overflow` | a frame wider than its container | the overflow in pixels |
+| `data-clipped` | a frame with boxes that hide content | how many |
+
+In production (the `production` export condition) the main entry renders every frame in
+the plain grid, and the camera's code is not shipped. `prototype-machine/panel` keeps
+the canvas for a review build.
+
+## PinnedScenario
+
+```tsx
+import { PinnedScenario } from "prototype-machine"
+
+<PinnedScenario machine={scenario} values={{ journey: "keyMade", data: "empty" }} path="/overview">
+  <Overview />
+</PinnedScenario>
+```
+
+A scenario pinned to one set of values, for showing a screen in a state without the
+panel: in a canvas frame, beside the same screen in another state.
+
+| Prop | Type | Description |
+| --- | --- | --- |
+| `machine` | `Machine` | **Required.** |
+| `values` | machine states and field values, flat | Where this scenario starts. Anything left out is at its default. Checked against the config. |
+| `path` | `string \| null` | Current route, for `when` predicates. |
+| `navigate` | `(to: string) => void` | Router push, for actions. |
+| `env` | `Record<string, unknown>` | Merged into what `when` sees. |
+
+- It reads no storage and no URL and writes neither, so any number share a page, and one
+  inside a `ScenarioProvider` leaves the outer scenario alone.
+- `go` and `set` work inside it, so the product's own buttons move it on. `reset` goes
+  back to `values`.
+- A field with `dom` sets its attribute on a `display: contents` wrapper around the
+  children (`data-pinned-scenario`), not on `<html>`, so two can differ on one page.
+- A `ScenarioPanel` inside it does not mount.
+- A value that is not one of a machine's states, a key a machine writes, a value a field
+  would refuse, or an unknown key throws. A canvas labels each frame with its pin, so a
+  pin that fell back to the default would be a frame labelled with a state it is not in.
+
 ## useScenario
 
 ```ts
@@ -497,9 +649,15 @@ No React import anywhere in it. Use it in tests, scripts, or a non-React adapter
 `sectionsOf`, `visible`, `warn`, `has`, `suggest`, `describe`, `summarize`,
 `toDefaults`, `changedCount`, `presetsOf`, `STRESS_TEXT`, `STRESS_NUMBERS`, `isDate`, `clearStorage`,
 `fromSearch`, `readStorage`, `resolve`, `toSearch`, `mergeSearch`, `diffFromDefaults`,
-`shapeOf`, `writeStorage(machine, key, snapshot)`, plus every type in the schema. The React entry additionally
+`shapeOf`, `writeStorage(machine, key, snapshot)`, `statesOf`, plus every type in the schema. The React entry additionally
 exports the snapping primitives (`snapTarget`, `cornerPosition`, `clampToViewport`,
-`useDrag`), which are pure and testable without a DOM.
+`useDrag`), which are pure and testable without a DOM, and `stressFrames`.
+
+`statesOf(machine, id)` lists one machine's states, or one enum field's options, as
+`{ id: { label, note } }` in declaration order, labelled the way the panel labels them.
+It is a canvas's `states` or `frames`. Its keys are typed as the state ids, so a canvas's
+`children` can pass them to `PinnedScenario`. It throws for an unknown id, with a
+suggestion, and for a boolean field, saying what to write instead.
 
 `describe(machine)` prints a text outline of the scenario space (states, legal moves,
 dead ends, fields, actions). `summarize(machine, snapshot)` prints the scenario on
@@ -536,6 +694,20 @@ Thrown on render, by `<StateBench>`:
 - an id in both `states` and `missing`
 - a state with an empty label
 
+Thrown on render, by `<StateCanvas>`: the same, plus
+
+- an empty `frames` object
+- a frame with an empty label
+- a width, `minHeight` or `squeeze` that is a percentage, or not above zero
+- an attribute in `attrs` that is not a valid name
+
+Thrown on render, by `<PinnedScenario>`:
+
+- a value that is not one of a machine's states, with a suggestion
+- a key a machine assigns, naming the machine to pin instead
+- a value a field would refuse to hold
+- a key that is not a machine or a field, with a suggestion
+
 Console warnings at runtime:
 
 - a state nothing can reach
@@ -546,6 +718,8 @@ Console warnings at runtime:
 - an action whose `run` throws (the panel stays up)
 - a `?__state=` value that is not a bench state (with a suggestion), or that names a
   missing state
+- a `?__state=` or `?__frame=` value that is not a state or frame of a canvas, with a
+  suggestion
 
 The errors are worded to name the fix. They are the main way the package teaches the
 model, so do not swallow them.
@@ -568,9 +742,17 @@ anyway.
 | `shift` + arrows | Nudge 32px |
 | `←` `→` `↑` `↓` in a switcher bar | Previous or next state. Skips disabled states and wraps. |
 | `Home` `End` in a switcher bar | First or last state |
+| `←` `→` `↑` `↓` on a focused canvas | Pan 80px (`shift`: 320px) |
+| `+` `-` on a focused canvas | Zoom to the next stop |
+| `1` on a focused canvas | Fit every frame |
+| `0` on a focused canvas | Zoom to 100% |
 
 The switcher's keys work only while focus is inside the bar. They ignore `ctrl`, `alt`,
 `meta` and `shift`, so browser and system shortcuts still work.
+
+The canvas's keys work only while the canvas itself has focus, not a component inside a
+frame: there, the keys are the component's. They ignore `ctrl`, `alt` and `meta`, so
+`Ctrl` `+` still zooms the browser.
 
 Closing returns focus to the launcher, so a keyboard user does not have to start over
 from `<body>`.

@@ -67,13 +67,33 @@ export interface StateBenchProps<T extends BenchStates> {
 /* Our own writes do not fire `popstate`, so they announce themselves. */
 const URL_CHANGE = "prototype-machine:urlchange"
 
-function subscribe(listener: () => void): () => void {
+/** Call `listener` when the address bar changes: back, forward, or one of our writes. */
+export function subscribeUrl(listener: () => void): () => void {
   window.addEventListener("popstate", listener)
   window.addEventListener(URL_CHANGE, listener)
   return () => {
     window.removeEventListener("popstate", listener)
     window.removeEventListener(URL_CHANGE, listener)
   }
+}
+
+const subscribe = subscribeUrl
+
+/**
+ * Set or remove search parameters with `replaceState`, keeping every other
+ * parameter and the hash, and tell `subscribeUrl` listeners. A write that
+ * changes nothing does nothing.
+ */
+export function writeSearchParams(patch: Record<string, string | null>): void {
+  const url = new URL(window.location.href)
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) url.searchParams.delete(key)
+    else url.searchParams.set(key, value)
+  }
+  const target = url.pathname + url.search + url.hash
+  if (target === window.location.pathname + window.location.search + window.location.hash) return
+  window.history.replaceState(window.history.state, "", target)
+  window.dispatchEvent(new Event(URL_CHANGE))
 }
 
 /* `undefined` on the server and while hydrating: the URL is not known yet, and
@@ -118,19 +138,9 @@ export function useStateParam<S extends string>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raw, known, param, initial])
 
-  const set = React.useCallback(
-    (next: S) => {
-      const url = new URL(window.location.href)
-      /* Always explicit, even for the initial state, so a link keeps meaning
-         the same thing after `initial` changes. */
-      url.searchParams.set(param, next)
-      const target = url.pathname + url.search + url.hash
-      if (target === window.location.pathname + window.location.search + window.location.hash) return
-      window.history.replaceState(window.history.state, "", target)
-      window.dispatchEvent(new Event(URL_CHANGE))
-    },
-    [param],
-  )
+  /* Always explicit, even for the initial state, so a link keeps meaning the
+     same thing after `initial` changes. */
+  const set = React.useCallback((next: S) => writeSearchParams({ [param]: next }), [param])
 
   const state = raw === undefined ? null : known ? (raw as S) : initial
   return [state, set]
@@ -145,31 +155,38 @@ export function noteOf(def: string | BenchStateDef | undefined): string | undefi
   return typeof def === "string" ? undefined : def?.note
 }
 
-/** Validate a bench's config and read its state from the URL. Shared by the
- *  development and production benches. */
-export function useBench<T extends BenchStates>(props: StateBenchProps<T>) {
-  const ids = Object.keys(props.states) as Array<keyof T & string>
-  const missingIds = Object.keys(props.missing ?? {})
+/** Refuse `states` and `missing` that no page could show honestly. Shared by
+ *  the bench and the canvas; `who` names the component in the message. */
+export function checkStates(who: string, states: BenchStates, missing: BenchStates | undefined): void {
+  const ids = Object.keys(states)
   if (ids.length === 0) {
-    throw new ScenarioError("<StateBench> was given no states.")
+    throw new ScenarioError(`<${who}> was given no states.`)
   }
-  const initial = (props.initial ?? ids[0]) as keyof T & string
-  if (!ids.includes(initial)) {
-    throw new ScenarioError(
-      `<StateBench> starts in "${initial}", which is not one of its states (${ids.join(", ")}).${suggest(initial, ids)}`,
-    )
-  }
-  for (const id of missingIds) {
-    if ((ids as string[]).includes(id)) {
+  for (const id of Object.keys(missing ?? {})) {
+    if (ids.includes(id)) {
       throw new ScenarioError(
         `"${id}" is both a state and missing. A state the code can render is not missing; remove it from \`missing\`.`,
       )
     }
   }
-  for (const [id, def] of [...Object.entries(props.states), ...Object.entries(props.missing ?? {})]) {
+  for (const [id, def] of [...Object.entries(states), ...Object.entries(missing ?? {})]) {
     if (labelOf(id, def).trim() === "") {
-      throw new ScenarioError(`<StateBench> state "${id}" has an empty label.`)
+      throw new ScenarioError(`<${who}> state "${id}" has an empty label.`)
     }
+  }
+}
+
+/** Validate a bench's config and read its state from the URL. Shared by the
+ *  development and production benches. */
+export function useBench<T extends BenchStates>(props: StateBenchProps<T>) {
+  const ids = Object.keys(props.states) as Array<keyof T & string>
+  const missingIds = Object.keys(props.missing ?? {})
+  checkStates("StateBench", props.states, props.missing)
+  const initial = (props.initial ?? ids[0]) as keyof T & string
+  if (!ids.includes(initial)) {
+    throw new ScenarioError(
+      `<StateBench> starts in "${initial}", which is not one of its states (${ids.join(", ")}).${suggest(initial, ids)}`,
+    )
   }
   const [state, setState] = useStateParam(ids, {
     initial,

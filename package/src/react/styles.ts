@@ -639,6 +639,146 @@ const CSS = `
 }
 .pm-switch-hide:hover { background: var(--pm-hover); color: var(--pm-fg); }
 
+/* The canvas. Its labels and marks are drawn in screen space over the
+   product's frames, so they stay one size at any zoom. Like a proof sheet:
+   crop marks just outside each frame's corners say where its container ends
+   without drawing a border that could be mistaken for the component's own,
+   and content that spills past them is spilling past its container. */
+.pm-canvas-overlay {
+  --pm-mark: rgba(255, 255, 255, 0.6);
+  /* #b58aff is 7.4:1 on the canvas surface; the accent itself is under 4.5:1
+     for 12px text. */
+  --pm-accent-text: #b58aff;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pm-canvas-ring {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 2px #fff;
+  pointer-events: none;
+}
+.pm-frame-marks {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+.pm-canvas-ring[hidden], .pm-frame-marks[hidden], .pm-axis[hidden] { display: none; }
+
+/* The names of the rows (states) and columns (frames). Each is a small slab,
+   so it reads the same over the dark surface and over a white frame once it
+   is frozen to the edge of the screen. */
+.pm-axis {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  max-width: 360px;
+  height: 24px;
+  padding: 4px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+  background: var(--pm-bg);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 4px 12px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: left;
+  color: var(--pm-fg);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.pm-axis-row { font-weight: 500; }
+.pm-axis-col { color: var(--pm-text); }
+.pm-axis:hover { background: var(--pm-hover); color: var(--pm-fg); }
+.pm-axis:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pm-axis[aria-pressed="true"] {
+  color: var(--pm-accent-text);
+  box-shadow: 0 0 0 1px var(--pm-accent-text), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.pm-axis[data-missing="true"] .pm-axis-label { color: var(--pm-muted); text-decoration: line-through; }
+.pm-axis-note { margin-left: 8px; color: var(--pm-muted); font-weight: 400; }
+.pm-crop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+.pm-crop::before, .pm-crop::after { content: ""; position: absolute; background: var(--pm-mark); }
+/* Each mark is two 12px arms on the frame's edge lines, stopping 4px short
+   of the corner, on the outside. */
+.pm-crop::before { width: 12px; height: 1px; }
+.pm-crop::after { width: 1px; height: 12px; }
+/* Scaled toward the corner they mark, so a small mark still points at it. */
+.pm-crop-tl { transform-origin: 100% 100%; }
+.pm-crop-tr { transform-origin: 0 100%; }
+.pm-crop-bl { transform-origin: 100% 0; }
+.pm-crop-br { transform-origin: 0 0; }
+.pm-crop-tl::before { left: 0; bottom: 0; }
+.pm-crop-tl::after { right: 0; top: 0; }
+.pm-crop-tr::before { left: 4px; bottom: 0; }
+.pm-crop-tr::after { left: 0; top: 0; }
+.pm-crop-bl::before { left: 0; top: 0; }
+.pm-crop-bl::after { right: 0; top: 4px; }
+.pm-crop-br::before { left: 4px; top: 0; }
+.pm-crop-br::after { left: 0; top: 4px; }
+.pm-frame-marks[data-current="true"] { --pm-mark: var(--pm-accent-text); }
+.pm-frame-marks[data-missing="true"] { --pm-mark: rgba(255, 255, 255, 0.3); }
+/* A measured overflow outranks the focus: it is a finding. Amber, 11:1 on
+   the surface, and dark text on it is 10:1. */
+.pm-frame-marks[data-overflow="true"] { --pm-mark: #f5b83d; }
+.pm-flag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f5b83d;
+  color: #1a1300;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pm-flag[hidden] { display: none; }
+.pm-canvas-findings[data-count]:not([data-count="0"])::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 9999px;
+  background: #f5b83d;
+  vertical-align: 1px;
+}
+.pm-canvas-findings[aria-disabled="true"] { color: var(--pm-muted); cursor: default; }
+
+.pm-switch-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--pm-text);
+  cursor: pointer;
+}
+.pm-switch-icon:hover { background: var(--pm-hover); color: var(--pm-fg); }
+.pm-switch-icon:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.pm-canvas-zoom {
+  min-width: 56px;
+  padding: 7px 8px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .pm-sr {
   position: absolute;
   width: 1px; height: 1px;
@@ -661,6 +801,11 @@ const CSS = `
   .pm-pill[aria-pressed="true"], .pm-option[data-active="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   .pm-pill, .pm-trigger, .pm-text, .pm-number, .pm-textarea, .pm-action, .pm-slider { border: 1px solid CanvasText; }
   .pm-slider-thumb::before { forced-color-adjust: none; background: Highlight; }
+  .pm-crop::before, .pm-crop::after { forced-color-adjust: none; background: CanvasText; }
+  .pm-canvas-ring { box-shadow: inset 0 0 0 2px Highlight; }
+  .pm-axis { border: 1px solid CanvasText; }
+  .pm-flag { forced-color-adjust: none; border: 1px solid CanvasText; }
+  .pm-axis[aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 }
 `
 

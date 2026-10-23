@@ -73,6 +73,10 @@ import * as panel from "prototype-machine/panel"
 assert.equal(root.ScenarioError, core.ScenarioError, "one ScenarioError class across entries")
 assert.equal(typeof root.ScenarioProvider, "function")
 assert.equal(typeof root.StateBench, "function")
+assert.equal(typeof root.StateCanvas, "function")
+assert.equal(typeof root.PinnedScenario, "function")
+assert.equal(typeof panel.StateCanvas, "function")
+assert.equal(typeof core.statesOf, "function")
 assert.equal(typeof panel.ScenarioPanel, "function")
 assert.equal(typeof core.toDefaults, "function")
 /* The real panel is a component with hooks; called bare, it throws. */
@@ -88,8 +92,10 @@ assert.deepEqual(m.initial().fields, { on: false })
     join(app, "prod.mjs"),
     `
 import assert from "node:assert/strict"
-import { ScenarioPanel, ScenarioProvider } from "prototype-machine"
+import { ScenarioPanel, ScenarioProvider, StateCanvas, stressFrames } from "prototype-machine"
 assert.equal(ScenarioPanel({}), null, "production ScenarioPanel is the stub")
+assert.equal(typeof StateCanvas, "function", "production StateCanvas renders the flat grid")
+assert.equal(Object.keys(stressFrames(880)).join(), "shipped,narrow,squeezed,wide,rtl")
 assert.equal(typeof ScenarioProvider, "function")
 `,
   )
@@ -129,7 +135,7 @@ assert.equal(typeof require("prototype-machine/panel").ScenarioPanel, "function"
   writeFileSync(
     join(app, "app.tsx"),
     `
-import { defineMachine, ScenarioPanel, ScenarioProvider, useScenario } from "prototype-machine"
+import { defineMachine, PinnedScenario, ScenarioPanel, ScenarioProvider, StateCanvas, statesOf, useScenario } from "prototype-machine"
 
 const scenario = defineMachine({
   machines: {
@@ -146,6 +152,22 @@ function Screen() {
   p.go("data", "loading")
   return <p>{state} {seats}</p>
 }
+
+/* Rows and columns from the config, each frame pinned, every id checked. */
+export function Canvas() {
+  return (
+    <StateCanvas states={statesOf(scenario, "data")} frames={{ phone: { width: 375 }, wide: { width: 1440, dir: "rtl" } }}>
+      {(data, frame) => (
+        <PinnedScenario machine={scenario} values={{ data, seats: frame === "phone" ? 1 : 10 }}>
+          <Screen />
+        </PinnedScenario>
+      )}
+    </StateCanvas>
+  )
+}
+
+// @ts-expect-error: not a machine or an enum field
+statesOf(scenario, "seats")
 
 export function Root() {
   return (

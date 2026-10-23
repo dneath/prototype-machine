@@ -5,16 +5,27 @@
  * putting a role switcher in your settings tray. */
 
 export {
+  PinnedScenario,
   ScenarioProvider,
   ScenarioContext,
   useHydrated,
   type Scenario,
   type ScenarioApi,
+  type PinnedScenarioProps,
   type ScenarioProviderProps,
 } from "./react/provider"
 export { useScenario, useScenarioSelector, useScenarioValue, type TypedScenario } from "./react/use-scenario"
 export { ScenarioPanel, type PanelPosition, type ScenarioPanelProps } from "./react/panel"
 export { StateBench } from "./react/switcher"
+export { StateCanvas } from "./react/canvas"
+export {
+  DEFAULT_CANVAS_WIDTH,
+  FRAME_PARAM,
+  stressFrames,
+  type CanvasFrameDef,
+  type CanvasFrames,
+  type StateCanvasProps,
+} from "./react/canvas-state"
 export {
   STATE_PARAM,
   useStateParam,

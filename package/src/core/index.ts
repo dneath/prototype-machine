@@ -33,3 +33,4 @@ export {
 } from "./serialize"
 export { describe, summarize, changedCount, toDefaults } from "./describe"
 export { STRESS_NUMBERS, STRESS_TEXT, presetsOf, type LabelledPreset } from "./stress"
+export { statesOf, type EnumFieldIds, type StateEntry, type StateIdsOf } from "./states"

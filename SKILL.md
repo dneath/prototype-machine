@@ -8,12 +8,16 @@ description: >-
   landed," or when a prototype has grown a
   hand-rolled panel of toggles that can be driven into states the product cannot reach.
   Covers modelling journeys vs free axes, transitions and guards, URL and storage
-  precedence, stress-testing layouts with edge-case presets, and component benches that
-  show one component in every state its code can reach, one URL per state. Triggers on: prototype controls, scenario switcher, state switcher, persona switcher, role switcher, dev
+  precedence, stress-testing layouts with edge-case presets, component benches that
+  show one component in every state its code can reach, one URL per state, and state
+  canvases that show every state at once, in every frame (320px, squeezed, RTL), on a
+  pan-and-zoom surface that flags overflow. Triggers on: prototype controls, scenario switcher, state switcher, persona switcher, role switcher, dev
   panel, debug panel, empty state, loading state, error state, forced state, first-run,
   onboarding state, edge cases, stress test, long text, RTL, feature flag panel, prototype-machine, defineMachine, ScenarioPanel,
   useScenario, state bench, component states, every state of a component, StateBench,
-  __state. NOT for production feature flags or real application state.
+  __state, break this component, every state at once, all states side by side, state
+  canvas, infinite canvas, contact sheet, StateCanvas, PinnedScenario, statesOf. NOT for
+  production feature flags or real application state.
   This is scaffolding for showing a design, and it says so out loud.
 ---
 
@@ -55,6 +59,15 @@ and to wire the panel that drives it.
   state is in the URL (`?__state=empty`), so every state is a link.
 - **Missing state**: a state the design shows but the code cannot reach. A bench lists
   it, disabled. It never renders a fake of it.
+- **Canvas**: a scratch page that renders one component in every state at once, a row
+  per state and a column per frame, on a surface you pan and zoom.
+- **Frame**: a canvas column. A condition the component is put in from outside: a
+  width, a sibling that squeezes it, a text direction, a theme attribute. It changes the
+  container, never the data.
+- **Pinned scenario**: a scenario fixed to one set of values with `PinnedScenario`, so a
+  screen can be shown in a state without the panel, many to a page.
+- **Finding**: what a canvas measured in a frame: content wider than its container, or a
+  box that cuts content off without an ellipsis or a scrollbar.
 
 ## Sub-skills
 
@@ -63,6 +76,7 @@ and to wire the panel that drives it.
 | [reference/api.md](reference/api.md) | Writing a config or calling the API. Every option, every type. |
 | [reference/recipes.md](reference/recipes.md) | Deciding *how to model* something. Journey ladders, forced data states, role switches, migrating a hand-rolled panel. |
 | [reference/bench.md](reference/bench.md) | Showing one component in every state. Finding states in the code, fixtures at the data boundary, verifying each state in a browser, removal. |
+| [reference/canvas.md](reference/canvas.md) | Showing every state at once, or breaking a component. Which axes apply, frames, a screen in every state of a machine, looking, reporting what broke. |
 | [reference/control-types.json](reference/control-types.json) | Machine-readable catalogue of field types and their options. |
 
 ## Setup check
@@ -149,7 +163,13 @@ only while focus is in the bar.
    the code.
 9. **"Step through the data states without opening the panel"** → use the panel. It is
    the one place for scenario controls. Do not add a second bar for a machine.
-10. **Anything about production flags, real auth, or persisted user settings** → wrong
+10. **"Show every state at once" / "break this component" / "stress-test it at every
+   width"** → a canvas. Follow `reference/canvas.md` from step 1. Find the states in the
+   code first, then keep only the axes whose cue matches.
+11. **"Show this screen in every state of the journey"** → a canvas of the screen, rows
+   and columns from `statesOf`, each frame a `PinnedScenario`. `reference/canvas.md`
+   section 6.
+12. **Anything about production flags, real auth, or persisted user settings** → wrong
    tool. Say so.
 
 ## Design principles
@@ -202,6 +222,13 @@ only while focus is in the bar.
     second switcher for a machine the panel already shows. Two places for one control
     are two things to keep in step. A bench page has no panel, so its bar is the only
     control on that page.
+16. **A frame changes the container, never the data.** Long text, RTL content and a
+    thousand rows are states, fed through fixtures. A 320px width, a squeezing sidebar,
+    a direction and a theme attribute are frames. Mixing them up is how a canvas starts
+    faking states.
+17. **A finding is observed, never predicted.** Report what the page shows. The canvas
+    measures overflow and clipping; everything else needs someone to look at every
+    frame. "No overflow" is not "nothing broke".
 
 ## Before you finish
 
@@ -217,4 +244,9 @@ only while focus is in the bar.
 | A bench that adds props or flags to the component | Feed data at the boundary. |
 | Loading on a timer | Hold it still. |
 | "Done" without opening each state | Open each state's URL and run axe. |
+| Long text or RTL content added as a canvas frame | Make it a state, with `STRESS_TEXT` in the fixture. |
+| Every axis run on every component | Keep an axis only when its cue matches. Note the dropped ones. |
+| Every machine crossed with every other on a canvas | Cross only what the screen branches on. |
+| A shared cache seeded by every canvas frame | One provider with a fresh client per frame. |
+| A canvas report of predicted failures | Report what the page shows, broken frames first, each a link. |
 | The package source copied into the app | Install it as a dependency. Change it in the package. |

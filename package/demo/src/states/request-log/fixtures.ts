@@ -23,6 +23,16 @@ function rows(count: number): RequestRow[] {
   })
 }
 
+/* The longest values real traffic has carried: a federated user id and a
+   fine-tuned model's full name. The table must survive them. */
+function longRows(count: number): RequestRow[] {
+  return rows(count).map((row, i) => ({
+    ...row,
+    user: i % 2 ? "maximiliana.oyelaran-vandervoort@field-operations.example-tenant.com" : row.user,
+    model: i % 3 ? row.model : "ft:llama-3.1-70b-instruct:acme-support-triage:2026-09-30:ckpt-0412",
+  }))
+}
+
 /* Held still: nothing resolves until the switcher moves. */
 const pending: RequestQuery = { status: "pending" }
 
@@ -34,6 +44,7 @@ export const STATES = {
   paged: { label: "Paged", note: "60 requests, so the table paginates" },
   refetching: { label: "Refetching", note: "Stale rows while a refresh runs" },
   member: { label: "Member", note: "Typical rows, seen by a member: no User column, no export" },
+  long: { label: "Long values", note: "The longest user and model ids the gateway accepts" },
   error: "Error",
 }
 
@@ -51,5 +62,6 @@ export const FIXTURES: Record<BenchState, { query: RequestQuery; viewer: "admin"
   paged: { query: { status: "success", data: rows(60), isFetching: false }, viewer: "admin" },
   refetching: { query: { status: "success", data: rows(18), isFetching: true }, viewer: "admin" },
   member: { query: { status: "success", data: rows(18), isFetching: false }, viewer: "member" },
+  long: { query: { status: "success", data: longRows(6), isFetching: false }, viewer: "admin" },
   error: { query: { status: "error", error: "The gateway answered 503. It is probably restarting." }, viewer: "admin" },
 }

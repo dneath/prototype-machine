@@ -43,3 +43,22 @@ export const bar: Queries = new Proxy({} as Queries, {
 export function switcherMounted(): boolean {
   return !!document.querySelector('prototype-machine[data-pm-layer="switcher"]')?.shadowRoot
 }
+
+/** The canvas's shadow root: its axis names and its bar. */
+export function canvasRoot(): ShadowRoot {
+  const host = document.querySelector('prototype-machine[data-pm-layer="canvas"]')
+  if (!host || !host.shadowRoot) throw new Error("The canvas's host element is not mounted.")
+  return host.shadowRoot
+}
+
+/** `screen`, inside the canvas's shadow root. */
+export const chrome: Queries = new Proxy({} as Queries, {
+  get(_target, key) {
+    const queries = within(canvasRoot() as unknown as HTMLElement) as unknown as Record<PropertyKey, unknown>
+    return queries[key]
+  },
+})
+
+export function canvasMounted(): boolean {
+  return !!document.querySelector('prototype-machine[data-pm-layer="canvas"]')?.shadowRoot
+}

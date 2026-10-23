@@ -1,5 +1,52 @@
 # Changelog
 
+## Unreleased
+
+Every state at once. A canvas lays one component out in every state and every frame on
+a surface you pan and zoom, and measures which frames overflow. The method is Jakub
+Krehel's [break](https://github.com/jakubkrehel/skills/tree/main/skills/break) skill; the
+surface follows ibelick's
+[component-canvas](https://www.ui-skills.com/skills/ibelick/component-canvas).
+
+### Added
+- `StateCanvas`: the same `states`, `missing` and fixtures as `StateBench`, all at once.
+  A row per state, a column per frame. Pan by dragging empty space or scrolling; zoom
+  with a pinch or `Ctrl`/`Cmd` and the wheel. The camera never re-renders a component:
+  it moves the world with one transform per animation frame. A box inside a frame that
+  can scroll keeps the wheel; a drag that starts on a frame belongs to the component.
+- Frames: `width`, `minHeight`, `dir`, `attrs`, `background` and `squeeze` (a hatched
+  sibling that takes room the way a sidebar would). `frames="stress"` is the built-in set
+  (`stressFrames(width)`): as shipped, 320px, squeezed, very wide, right to left.
+- Names that stay on screen. States down the left, frames along the top, frozen to the
+  edges like a spreadsheet's headers. Each is a toggle: a state, a frame, or both focus a
+  row, a column or one frame, and the URL holds it (`?__state=`, `?__frame=`,
+  `FRAME_PARAM`). Names that would collide give way, in order.
+- Crop marks just outside each frame's corners, instead of a border that could pass for
+  the component's own.
+- Findings. Each frame is measured once its layout settles: content wider than its
+  container, and boxes that hide content without an ellipsis or a scrollbar. A flagged
+  frame gets amber marks and a note (`134px too wide`, `Cuts off content`), and
+  `data-overflow` / `data-clipped` for tests. The bar counts them; clicking the count
+  steps through them.
+- The canvas bar: zoom, 100%, Fit, Text 200% and Pause motion for every frame at once,
+  and the findings count. Keys (arrows, `+`, `-`, `1`, `0`) only while the canvas itself
+  has focus. Tabbing to something off screen moves the camera to it.
+- `PinnedScenario`: a scenario pinned to flat `values`, with no storage, URL or `<html>`
+  attributes, so a screen can be shown in many states on one page. `go` and `set` work
+  inside it; `reset` returns to the pin. A pin the config would not hold throws.
+- `statesOf(machine, id)` in core: one machine's states, or one enum field's options,
+  labelled and typed, for a canvas's rows or columns.
+- `reference/canvas.md`: the workflow. Which axes apply to a component, frames, a screen
+  in every state of a machine, what is and is not measured, and how to report what broke.
+- The demo has a canvas for the request log (`/states/request-log/canvas`, with a new
+  Long values state) and for the overview screen in every journey and data state
+  (`/states/overview/canvas`).
+
+### Changed
+- A field's `dom` attribute is set before paint, not after it.
+- `checkStates`, `subscribeUrl` and `writeSearchParams` are shared by the bench and the
+  canvas, so both refuse the same configs with the same messages.
+
 ## 0.12.0
 
 Ready for npm, plus three things learned from Josh Puckett's
