@@ -378,7 +378,7 @@ npm test          # vitest, jsdom
 npm run typecheck
 npm run build     # tsup -> dist (esm + cjs + types)
 npm run check     # all of the above, plus package lint and an install of the tarball
-npm pack          # prototype-machine-<version>.tgz, built first if it needs to be
+npm run tarball   # prototype-machine-<version>.tgz, built if needed and checked
 
 cd demo
 npm install
@@ -388,9 +388,12 @@ npm run dev       # a playground on :5199
 The playground has the panel at `/overview`, a bench at `/states/request-log`, and
 canvases at `/states/request-log/canvas` and `/states/overview/canvas`.
 
-Run `npm pack` inside `package/`; the repo root has no `package.json`. The `.tgz` installs
-into any project without the npm registry: `npm install --save-dev ./prototype-machine-<version>.tgz`,
-or the same path with `pnpm add -D`, `yarn add -D file:` or `bun add -d`.
+Run `npm run tarball` inside `package/`; the repo root has no `package.json`. The `.tgz`
+installs into any project without the npm registry: `npm install --save-dev
+./prototype-machine-<version>.tgz`, or the same path with `pnpm add -D`, `yarn add -D file:`
+or `bun add -d`. Use it rather than plain `npm pack`: when npm's `ignore-scripts` setting is
+on, `npm pack` skips the build and packs three files without a word, and `npm run tarball`
+refuses to leave a tarball that is missing anything.
 
 ## License
 

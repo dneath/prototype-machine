@@ -50,10 +50,19 @@ surface follows ibelick's
 - `checkStates`, `subscribeUrl` and `writeSearchParams` are shared by the bench and the
   canvas, so both refuse the same configs with the same messages.
 
+### Added
+- `npm run tarball` builds when it needs to, packs, and checks the tarball holds the
+  built code and the docs, deleting it and failing if not. It works whatever npm's
+  `ignore-scripts` setting is, and `--out <folder>` writes it somewhere else.
+
 ### Fixed
 - `npm pack` on a fresh clone packed a tarball with no `dist/`, which installed and then
   failed on its first import. Packing now builds first when `dist/` is missing or older
   than its sources, and leaves a fresh build alone.
+- With npm's `ignore-scripts` on, `npm pack` skipped the build and the docs and packed
+  three files, and `npm publish` would have uploaded them. Nothing in a package can stop
+  that, so `npm run tarball` exists, and `PUBLISHING.md` publishes the tarball it checked.
+  `npm run check` now passes with the setting on.
 - `npm run build` works on Windows: it cleared `dist/` with `rm -rf`, which `cmd.exe`
   does not have.
 

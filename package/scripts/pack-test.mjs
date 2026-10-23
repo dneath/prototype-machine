@@ -34,7 +34,7 @@ const fail = (message) => {
 
 try {
   /* 1. The tarball: what is in it. */
-  const [packed] = JSON.parse(run(npm, ["pack", "--json", "--dry-run=false", "--pack-destination", work], pkgDir))
+  const [packed] = JSON.parse(run(npm, ["pack", "--json", "--dry-run=false", "--ignore-scripts=false", "--pack-destination", work], pkgDir))
   const files = packed.files.map((f) => f.path)
   const allowed = /^(dist\/|reference\/|README\.md$|LICENSE$|CHANGELOG\.md$|SKILL\.md$|package\.json$)/
   const stray = files.filter((f) => !allowed.test(f))

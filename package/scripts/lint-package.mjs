@@ -18,7 +18,7 @@ const work = mkdtempSync(join(tmpdir(), "pm-lint-"))
 
 try {
   const [packed] = JSON.parse(
-    execFileSync(npm, ["pack", "--json", "--dry-run=false", "--pack-destination", work], {
+    execFileSync(npm, ["pack", "--json", "--dry-run=false", "--ignore-scripts=false", "--pack-destination", work], {
       cwd: pkgDir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "inherit"],

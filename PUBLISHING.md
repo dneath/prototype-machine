@@ -15,7 +15,10 @@ Part 2: three commands and a push.
   - two package linters, publint and Are the Types Wrong
   - an install of the packed package into a throwaway app, to make sure it works the
     way someone else's project will use it
-- `npm publish` runs `npm run check` first, so a broken build can't go out.
+- `npm publish` runs `npm run check` first, so a broken build can't go out, unless npm's
+  `ignore-scripts` setting is on: then it skips the check and the build and uploads a
+  package with no code. Part 1 publishes a tarball checked by `npm run tarball`, which
+  is safe either way.
 - `.github/workflows/release.yml` publishes from GitHub when you push a version tag.
   It needs the one-time setup in Part 1, step 6.
 
@@ -40,20 +43,26 @@ goes up from your computer.
    npm login
    ```
 
-4. **Check what will be uploaded, without uploading it.**
+4. **Check it, build the tarball, and look at what will be uploaded.**
    ```bash
-   npm publish --dry-run
+   npm run check
+   npm run tarball
+   npm publish prototype-machine-0.13.0.tgz --dry-run
    ```
-   It runs the full check (about a minute), then lists the files. You should see
-   `dist/`, `reference/`, `README.md`, `SKILL.md`, `CHANGELOG.md`, `LICENSE` and
-   `package.json`, and nothing else. `npm run test:pack` checks the same list on its own.
+   The check takes about a minute. `npm run tarball` builds the package and checks the
+   tarball holds the built code and the docs; it deletes the tarball and fails if not.
+   The dry run lists the files: `dist/`, `reference/`, `README.md`, `SKILL.md`,
+   `CHANGELOG.md`, `LICENSE` and `package.json` (38 in all), and nothing else.
 
-5. **Publish.**
+5. **Publish that tarball.**
    ```bash
-   npm publish
+   npm publish prototype-machine-0.13.0.tgz
    ```
-   npm asks for a one-time code from your authenticator app. When it finishes, the
-   package is live at npmjs.com/package/prototype-machine.
+   Publishing the file, rather than running a bare `npm publish`, uploads exactly what
+   was checked, whatever npm's `ignore-scripts` setting is. A version can never be
+   published twice, so a broken one can't be replaced, only deprecated. npm asks for a
+   one-time code from your authenticator app. When it finishes, the package is live at
+   npmjs.com/package/prototype-machine.
 
    Tag the release in git so the history shows what went out:
    ```bash

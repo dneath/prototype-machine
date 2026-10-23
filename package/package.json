@@ -78,6 +78,7 @@
     "smoke": "node scripts/smoke.cjs",
     "lint:package": "node scripts/lint-package.mjs",
     "test:pack": "node scripts/pack-test.mjs",
+    "tarball": "node scripts/tarball.mjs",
     "check": "npm test && npm run typecheck && npm run build && npm run smoke && npm run lint:package && npm run test:pack",
     "version": "node scripts/sync-version.mjs",
     "prepack": "node scripts/prepack.mjs",

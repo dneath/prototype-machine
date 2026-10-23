@@ -91,7 +91,9 @@ This guidance targets **prototype-machine 0.13.0**.
    npm install --save-dev --save-exact prototype-machine
    ```
    If the registry has no such package, build a tarball from the repo instead
-   (`npm ci && npm pack` in `prototype-machine/package`) and install that file.
+   (`npm ci && npm run tarball` in `prototype-machine/package`) and install that file.
+   Not plain `npm pack`: with npm's `ignore-scripts` on, it packs a tarball with no
+   code in it and says nothing.
 3. **Read the docs that match the installed version.** The package ships this skill:
    `node_modules/prototype-machine/SKILL.md` and its `reference/` describe exactly the
    version installed. If they disagree with a copy from somewhere else, they win.
