@@ -2,11 +2,16 @@
 
 A dev-only control panel for React prototypes. Declare the states your prototype can be
 in (empty, loading, first run, admin, trial expired) and get a panel that drives it.
-Combinations you never declared can't be set. A bench shows one component in every
-state it can be in, one link per state. A canvas shows all of them at once, at every
-width, and marks the ones that break.
+Combinations you never declared can't be set.
 
-The panel and the switcher render nothing in production.
+Two scratch pages show one component in the states its code can reach:
+
+- A **bench** shows one state at a time, and every state is a link.
+- A **canvas** shows every state at once, at every width, and marks the frames that
+  overflow or cut off content.
+
+In production the panel and the bench's switcher render nothing, and the canvas draws
+its frames in a plain grid, without its camera, names or bar.
 
 ## Quick start
 
@@ -215,20 +220,24 @@ The workflow, adapted from Jakub Krehel's break skill, is in
 bottom of the page, such as a header or a footer. Nothing to configure.
 
 **Nothing bound to the keyboard.** The panel opens from a click on its launcher. It
-binds no shortcut, so it never collides with your app's keys.
+binds no shortcut, so it never collides with your app's keys. The bench's bar and the
+canvas take keys only while focus is on them, never inside a component.
 
 **A panel that owns its own look.** Dark, plain and deliberately unlike your app, so it
 never becomes part of a screenshot or part of the critique. It renders in its own shadow
 root on `<body>`: your app's resets, fonts, dark-mode classes and transforms can't reach
 it, it stays above your modals, and keystrokes typed into it never trigger your app's
 hotkeys. Its dropdowns are drawn by the panel, not the OS, so they're always readable.
-Drag it by the launcher or the header; drop it near a corner and it snaps.
+Drag it by the launcher or the header; drop it near a corner and it snaps. The bench's
+bar and the canvas's names, marks and bar are drawn the same way, each in its own shadow
+root.
 
 **Stress tests, one click away.** Give a string or number field `presets: "stress"` and
 it gets the worst cases real data produces: empty, 2,000 characters, an unbreakable URL,
 right-to-left, CJK, emoji sequences, markup, 1M. The panel's **Page** section flips the
 whole page to RTL, scales its text to 200%, and slows or pauses its animations, then
-puts everything back.
+puts everything back. On a canvas, `frames="stress"` does the same for the container:
+every state at 320px, squeezed by a sidebar, very wide and right to left, side by side.
 
 ```ts
 fields: {
@@ -266,7 +275,8 @@ can build a scenario and assert on it.
 ## Example prompts
 
 The package ships an agent skill ([`SKILL.md`](SKILL.md) and [`reference/`](reference))
-that teaches a coding agent to model a scenario space and wire the panel. After
+that teaches a coding agent to model a scenario space, wire the panel, and build benches
+and canvases. After
 `npm install` it is at `node_modules/prototype-machine/SKILL.md`, matching the
 installed version; point your agent at it, or copy it into your agent's skills folder.
 With it loaded, these are the kinds of things to ask for.
@@ -335,7 +345,7 @@ With it loaded, these are the kinds of things to ask for.
 | Doc | What it covers |
 | --- | --- |
 | [reference/api.md](reference/api.md) | Every option and type: `defineMachine`, fields, provider, panel, `StateBench`, `StateCanvas`, `PinnedScenario`, `useScenario`, the core entry, errors. |
-| [reference/recipes.md](reference/recipes.md) | How to model something: journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS. |
+| [reference/recipes.md](reference/recipes.md) | How to model something: journey ladders, forced data states, roles, migrating a hand-rolled panel, driving CSS, a screen in every state. |
 | [reference/bench.md](reference/bench.md) | How to build a bench: find the states in the code, feed data at the boundary, verify each state in a browser, remove it. |
 | [reference/canvas.md](reference/canvas.md) | How to break a component on a canvas: which axes apply, frames, a screen in every state, what is measured, reporting what broke. |
 | [SKILL.md](SKILL.md) | The agent skill itself. |
@@ -347,7 +357,8 @@ Two things worth knowing before you ship a review build:
 - `enabled` defaults to `process.env.NODE_ENV !== "production"` and fails safe. Bundlers
   that honour the `production` export condition (Vite, webpack 5, esbuild, Next) resolve
   `ScenarioPanel` to a stub that renders nothing, so its bytes never ship. To show the
-  panel in a deployed review build, import it from `prototype-machine/panel`.
+  panel, a bench's switcher or a canvas's camera in a deployed review build, import
+  `ScenarioPanel`, `StateBench` or `StateCanvas` from `prototype-machine/panel`.
 - If you link the package by path, deduplicate `react` and `react-dom`. A `file:`
   dependency resolves through a symlink and can give you two copies of React.
 
@@ -372,6 +383,9 @@ cd demo
 npm install
 npm run dev       # a playground on :5199
 ```
+
+The playground has the panel at `/overview`, a bench at `/states/request-log`, and
+canvases at `/states/request-log/canvas` and `/states/overview/canvas`.
 
 ## License
 
