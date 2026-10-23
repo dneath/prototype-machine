@@ -1,6 +1,6 @@
 # API reference
 
-**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.12.0.
+**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.13.0.
 
 For *how to model* a scenario space, read [recipes.md](recipes.md) first. This file is
 the exhaustive surface.

@@ -1,6 +1,6 @@
 # State canvas
 
-**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.12.0.
+**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.13.0.
 
 A canvas shows one component in every state at once. Each state is a row. Each column is
 a frame: a condition the component is put in from outside, such as a 320px container, a

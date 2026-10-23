@@ -1,4 +1,4 @@
-# Publishes to npm when a version tag is pushed: `git push origin v0.12.0`.
+# Publishes to npm when a version tag is pushed: `git push origin v0.13.0`.
 #
 # No npm token is stored anywhere. npm trusts this workflow directly
 # ("trusted publishing"), which has to be switched on once at npmjs.com after

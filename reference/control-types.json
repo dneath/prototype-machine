@@ -1,6 +1,6 @@
 {
-  "$comment": "Machine-readable catalogue for prototype-machine 0.12.0. Human docs: ./api.md",
-  "version": "0.12.0",
+  "$comment": "Machine-readable catalogue for prototype-machine 0.13.0. Human docs: ./api.md",
+  "version": "0.13.0",
   "kinds": {
     "machine": {
       "description": "A journey. One state is current; each state writes a whole tuple of context via `assign`. Use when moving one value alone would produce a state the product cannot be in.",

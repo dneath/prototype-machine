@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.13.0
+
+The first release on npm: 0.12.0 was never published, so its changes below ship
+here too.
 
 Every state at once. A canvas lays one component out in every state and every frame on
 a surface you pan and zoom, and measures which frames overflow. The method is Jakub

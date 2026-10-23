@@ -1,6 +1,6 @@
 # Component bench
 
-**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.12.0.
+**Part of [prototype-machine](../SKILL.md)**. Targets prototype-machine 0.13.0.
 
 A bench shows one component in every state it can be in, on a scratch page, with a
 switcher to step through the states. Each state has its own URL.

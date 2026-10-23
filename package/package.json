@@ -1,6 +1,6 @@
 {
   "name": "prototype-machine",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "A dev-only control panel for React prototypes. Declare the states as state machines, so combinations you never declared can't be set.",
   "author": "Daniel Neath (https://github.com/dneath)",
   "license": "MIT",

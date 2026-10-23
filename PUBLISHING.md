@@ -5,8 +5,9 @@ Part 2: three commands and a push.
 
 ## Where things stand
 
-- Version **0.12.0** is ready and not published yet.
-- The name `prototype-machine` was free on npm on 2026-10-16. If it's taken by the time
+- Version **0.13.0** is ready and not published yet. 0.12.0 never went to npm; its
+  changes ship in 0.13.0.
+- The name `prototype-machine` was still free on npm on 2026-10-23. If it's taken by the time
   you publish, see "If the name is taken" at the bottom.
 - `npm run check` (in `package/`) runs everything a release needs and passes:
   - tests and the typecheck
@@ -56,10 +57,10 @@ goes up from your computer.
 
    Tag the release in git so the history shows what went out:
    ```bash
-   git tag v0.12.0
-   git push origin v0.12.0
+   git tag v0.13.0
+   git push origin v0.13.0
    ```
-   The release workflow will run on that tag and fail, because 0.12.0 is already on
+   The release workflow will run on that tag and fail, because 0.13.0 is already on
    npm. That's expected this one time.
 
 6. **Let GitHub publish from now on.** On npmjs.com, open the package → **Settings** →
@@ -83,30 +84,30 @@ goes up from your computer.
 
 ## Part 2: every release after that
 
-1. **Write the changelog entry.** In `package/CHANGELOG.md`, add a `## 0.13.0` section
+1. **Write the changelog entry.** In `package/CHANGELOG.md`, add a `## 0.14.0` section
    at the top saying what changed. A test fails if the version has no entry.
 
 2. **Bump the version.** In `package/`:
    ```bash
    npm version minor --no-git-tag-version
    ```
-   Use `patch` for fixes only (0.12.0 → 0.12.1), `minor` for new features
-   (0.12.0 → 0.13.0), and `major` for changes that break existing configs. This also
+   Use `patch` for fixes only (0.13.0 → 0.13.1), `minor` for new features
+   (0.13.0 → 0.14.0), and `major` for changes that break existing configs. This also
    updates the version named in `SKILL.md` and `reference/`.
 
 3. **Check, commit, tag, push.**
    ```bash
    npm run check
    git add -A
-   git commit -m "Release 0.13.0"
-   git tag v0.13.0
-   git push origin main v0.13.0
+   git commit -m "Release 0.14.0"
+   git tag v0.14.0
+   git push origin main v0.14.0
    ```
 
 4. **Watch it go.** The repo's **Actions** tab shows the Release run. When it's green,
    the new version is on npm with a provenance badge linking it to the commit.
 
-A version with a hyphen (`0.13.0-beta.1`) publishes under the `next` tag, so
+A version with a hyphen (`0.14.0-beta.1`) publishes under the `next` tag, so
 `npm install prototype-machine` keeps getting the last stable version until you
 release one.
 
@@ -114,12 +115,12 @@ release one.
 
 - **The Release run fails at "Check the tag matches package.json".** The tag and the
   version in `package/package.json` differ. Delete the tag
-  (`git tag -d v0.13.0 && git push origin :v0.13.0`), fix the version, and tag again.
+  (`git tag -d v0.14.0 && git push origin :v0.14.0`), fix the version, and tag again.
 - **It fails with E404 or "not authorized".** The trusted publisher on npmjs.com
   doesn't match: the workflow filename must be exactly `release.yml`, and the user
   and repo must match GitHub.
 - **A bad version went out.** Don't unpublish it. Publish a fixed patch version, then
-  mark the bad one: `npm deprecate prototype-machine@0.13.0 "Use 0.13.1"`.
+  mark the bad one: `npm deprecate prototype-machine@0.14.0 "Use 0.14.1"`.
 
 ## If the name is taken
 
