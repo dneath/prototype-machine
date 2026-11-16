@@ -25,6 +25,7 @@ brief and from the other sources cited here.
 - [F. The tweak engine](#f-the-tweak-engine)
 - [G. Comparable tools](#g-comparable-tools)
 - [H. Open questions](#h-open-questions)
+- [I. Retune 0.4.1, read under its MIT license](#i-retune-041-read-under-its-mit-license)
 
 ---
 
@@ -577,15 +578,18 @@ then layers, then specificity, then order
 | **Inline, `el.style.setProperty(p, v, "important")`** | Every author rule, layered or not, important or not ([css-cascade-5](https://www.w3.org/TR/css-cascade-5/)) | Allowed: CSP blocks `setAttribute("style")` but not CSSOM writes ([MDN style-src](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/style-src)) | React diffs the `style` prop against its previous props, not the DOM, so a tweak survives a re-render unless React writes that same key ([CSSPropertyOperations.js](https://github.com/facebook/react/blob/main/packages/react-dom-bindings/src/client/CSSPropertyOperations.js)) | **Per-property tweaks on the selected element.** Cannot express `:hover`, pseudo-elements or `@media`. |
 | **An unlayered sheet** | Every layered normal rule, Tailwind v4's `@layer utilities` included ([MDN @layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer), [Tailwind v4](https://tailwindcss.com/blog/tailwindcss-v4)) | `adoptedStyleSheets` (Baseline since 2023) has no element to carry a nonce ([HTML](https://html.spec.whatwg.org/multipage/urls-and-fetching.html#nonce-attributes)); "no browser currently blocks these methods" ([MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/style-src)) | Untouched by React | **Pseudo-states, variant and every-instance scope, forced states.** Must still win on specificity against unlayered app CSS, and loses to layered `!important` ([MDN @layer](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer)). |
 
-**So the engine uses both.**
+**So the engine uses both.** Refined after reading Retune 0.4.1 (section I): the
+adopted sheet carries every scope, the instance included; inline-important is the
+fallback, used only when a read-back shows the sheet lost.
 
-- Instance tweaks are inline-important, with the previous value and priority saved for an
-  exact revert.
+- As first written: instance tweaks are inline-important, with the previous value and
+  priority saved for an exact revert.
 - Everything else is one adopted sheet whose rules target `[data-pm-scope="…"]` markers
   with a specificity bump (`:is(#\#)` style doubling), plus `!important`.
 - The CSP case gets a test page in M4, because no source names `replaceSync` directly.
-- **The one React hazard:** if the component re-renders and writes the same inline key
-  (the demo card's `borderRadius` does), React replaces the tweak.
+- **The one React hazard,** which applied to the inline-first version only: if the
+  component re-renders and writes the same inline key (the demo card's `borderRadius`
+  does), React replaces the tweak.
   - The engine watches the `style` attribute of tweaked elements with a
     `MutationObserver`, re-applies the tweak, and updates the "before" value to what React
     wrote.
@@ -749,3 +753,77 @@ where it changes the build.
 10. **Screenshots** are not in the brief. Agentation sends none
     ([output](https://agentation.com/output)). An agent can open the reproduce URL itself.
     Leave them out of v1?
+11. **More from Agentation or current Retune.** Their sources were not read (section I).
+    Three ways to get more:
+    - ask each author for permission or a commercial license (I can draft the note);
+    - have someone with no hand in this code read them and write a behaviour-only spec.
+      This keeps the code clean, but the reading is still the use their license excludes,
+      so it needs the author's permission too;
+    - keep to their docs and the MIT 0.4.1 code, as now. This is what I recommend.
+
+---
+
+## I. Retune 0.4.1, read under its MIT license
+
+Added after the checkpoint, when you asked for the sources to be read.
+
+### What was read, and why only this
+
+| Package | Versions | License | Read |
+| --- | --- | --- | --- |
+| `retune` | 0.3.0, 0.4.0, 0.4.1 | **MIT**: `"license": "MIT"` in each published `package.json`, and "## License / MIT" in the 0.4.1 README | **Yes.** The original TypeScript of 0.4.1, from `sourcesContent` in its published source map (`retune-0.4.1.tgz`, about 11,000 lines). |
+| `retune` | 0.0.0, 0.1.0, 0.5.0 to 0.7.6 | PolyForm Shield 1.0.0 | No |
+| `agentation`, `agentation-mcp` | every published version | PolyForm Shield 1.0.0. The two releases with an empty license field (0.0.1, 1.4.3) were unpublished. | No |
+
+Licenses come from `npm view <pkg>@<version> license` and the tarballs, read 2026-11-16.
+
+- **Retune 0.3.0 to 0.4.1** were released by their author under MIT, which allows reading
+  and reuse with the copyright notice. Nothing below is copied; these are ideas, written up
+  in our own words and designed our own way. Credit: Retune 0.4.1, MIT, © Sujan Khadgi.
+- **The PolyForm Shield sources** were not opened. Reading them to apply what they do to
+  this package is the use their license excludes, and Retune's says a free product
+  competes. It would also make the clean room meaningless for every line written
+  afterwards. Section H, question 11, has the ways to get more if you want it.
+
+### Adopt
+
+| From 0.4.1 | What we do with it | Where it lands |
+| --- | --- | --- |
+| The host is appended to `<html>`, not `<body>` | Mount every tool host on `<html>`. Observed in Chromium 153: with `transform`, `filter` or `contain: paint` on `<body>`, a fixed host inside `<body>` scrolls away with the page; one on `<html>` stays put. Today's hosts are on `<body>` (audit 6.11). | 02 §1, M0 |
+| One constructed stylesheet in `document.adoptedStyleSheets` holds every preview rule, each with `!important`; detaching it reverts everything | All preview goes in one adopted sheet, the instance scope included, targeted by a marker attribute. An important author rule beats React's inline `style` writes, so the React-rewrite hazard in section F disappears. Inline `!important` becomes the fallback, used only when a read-back of the computed value shows the sheet lost (to an inline `!important` from the app, or a layered `!important`). | 02 §6 |
+| Changes to one target within 300 ms form one undo step | Undo groups by gesture: a scrub, or paired properties changed together, undo as one. | 02 §6 |
+| Utility classes recognised by stylesheet structure, not names: rules in `@layer utilities`, or rules with at most two property families on a single-class selector | Scope candidates leave out utility and hashed classes and keep semantic ones. Each candidate shows how many elements it matches. | 02 §6 |
+| Under a class scope, the panel's values come from that class's own rules, excluding variant rules with extra classes (`.btn.active`) | "Before" values under a wider scope are the scope's authored values, not the instance's computed ones. | 02 §6 |
+| Pending changes move when the scope changes | Switching scope migrates the draft instead of dropping it. | 02 §6 |
+| Sizing as Fill, Hug or Fixed per axis, translated by the parent's layout (block, grid child, flex main axis, flex cross axis) | A Size control in designers' terms, with the CSS worked out from the parent. | 02 §6 |
+| Controls depend on the parent's layout too (flex child, grid child, positioned), not only the element's own type | Self-alignment and sizing controls follow the parent. | 02 §6 |
+| A truncation control: none, one line with an ellipsis, clamp to N lines | Text group. Ties in with the truncation check in section E. | 02 §6 |
+| A bare typed number keeps the previous unit; unitless properties never gain one; scrubbing from a keyword (`normal`, `auto`) starts in px; display rounds | Value entry rules for every numeric control. | 02 §6 |
+| A second click at the same spot (within 5px) steps through the element stack at that point | Click-to-cycle while picking. | 02 §2 |
+| Void elements (`br`, `wbr`, `col`, `source`, `track`, `area`, `param`) resolve to their parent; a move onto an ancestor waits 50 ms, so crossing the gap between siblings does not flash the parent | Picking details. | 02 §2 |
+| Clicks are intercepted in the capture phase with no glass layer, so the page's real `:hover` shows while picking | Worth testing against our glass layer. Hover is often the thing under review. 0.4.1 intercepts only `click`, so the app's `pointerdown` and `mousedown` handlers still run (menus that open on press, drags, focus moves). Our version intercepts the whole press on `window`, in the capture phase. M2 measures both. | 02 §2 |
+| The component name is shown only on that component's root DOM node | Labels say `Card` on the card, not on every child of it. | 02 §2 |
+| Context for finding an element without source: its own text (not its children's), parent, child summary ("3 children: h2, p, button"), siblings either side, DOM path | `Target.context`, at standard and full fidelity. | 02 §3 |
+| Output: longhands collapsed into shorthands when every side changes the same way; a changes table with property, before, after, source rule and token; a one-line summary of the token system ("47 tokens; prefixes color (12), space (9)…"); an implementation hint per styling approach | All four, in the serializers. Tailwind hints come from the page's own theme variables first, the default scale second. | 02 §4 |
+| `window.__retune` gives agents that drive a browser (Playwright MCP, Chrome DevTools MCP) a way in through `page.evaluate` | A page API transport, development only. | 02 §5 |
+| Pending changes are saved and re-applied on load | Unsent tweaks survive a reload or hot update, with "3 tweaks restored". | 02 §6 |
+| An element tree tab, hover to highlight | A tree view in the inspector: a keyboard alternative to pointing. | 02 §2, §10 |
+| A box model overlay only for the input being hovered, including gaps between flex and grid children | Matches the dimension lines in 02 §2; adds gaps. | 02 §2 |
+
+### Avoid
+
+The bridge in 0.4.1 is a list of what section D warns about. These are observations of
+0.4.1 only; later versions were not read.
+
+| In 0.4.1 | Why not | Our rule |
+| --- | --- | --- |
+| The WebSocket server is created with only a port, so it listens on every interface, with no `Origin` or `Host` check and no token | WebSockets are not covered by CORS, so any page the reviewer visits can connect to `ws://localhost:9223`. | Loopback, Host, Origin, token (D). |
+| A new browser connection silently replaces the previous one | Two tabs fight; a hostile page can take over. | One session per tab. |
+| On a busy port the server moves to the next one, but the browser always dials 9223 | They can stop finding each other without saying so. | The pairing link and `bridge.json` carry the real port. |
+| Reading the formatted changes clears them by default | If the agent fails half way, the feedback is gone. | Reads never consume; status changes are explicit. |
+| Tool errors return as plain text, without `isError` | The agent may not notice the call failed. | `isError: true` with the fix. |
+| The browser retries the socket forever (3 s to 60 s backoff), whether or not a bridge was ever configured | Console noise on every page. | No connection unless configured. A few retries, then "Bridge offline", with a button. |
+| A global `alt+d` hotkey, and `Cmd/Ctrl+Z` taken on the document while active | Steals the app's own undo. | No global keys (invariant 4). Undo only in the inspector. |
+| Default scope is the first shared class | The first edit can change dozens of elements. | Default is this instance; wider scopes show their count first. |
+| Loads the Inter font from a third-party host on mount | A network call on every page, and the tool takes on a look. | System fonts, no network (invariant 9, 02 §8). |
+| Hidden below 768px | | Works at any width. |
