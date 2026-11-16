@@ -208,12 +208,37 @@ closed                         open
 - **Without a provider** the shell still mounts. Select and Annotate work, and States says
   there is no scenario on this page.
 
+### Where it lives
+
+Every tool host (shell, overlays, bench switcher, canvas chrome) is appended to `<html>`,
+not `<body>`. A `transform`, `filter` or `contain` on `<body>` turns a fixed child into
+one that scrolls with the page (observed, audit 6.11). A `MutationObserver` on `<html>`'s
+child list puts a removed host back, as today's does for `<body>`. M2 checks that a Next.js
+App Router root layout, which renders `<html>` itself, leaves the extra child alone.
+
 ### Picking
 
-- **Capture.** Picking draws a transparent full-viewport layer inside the shadow root, so
-  clicks never reach the product. The element under the pointer comes from
-  `document.elementsFromPoint`, skipping the tool's own host. It descends into open shadow
-  roots and same-origin iframes, translating coordinates.
+- **Capture.** Two ways to keep clicks from reaching the product. M2 measures both and
+  keeps one:
+  1. **A glass layer**, transparent and full-viewport, in the shadow root. Nothing reaches
+     the page, but the page shows no `:hover` while picking.
+  2. **No glass.** Instead, `pointerdown`, `mousedown`, `pointerup`, `mouseup`, `click`,
+     `dblclick`, `contextmenu` and `touchstart` are cancelled on `window` in the capture
+     phase while picking. The page's real `:hover` stays visible, which is often what is
+     being reviewed (Retune 0.4.1 does a narrower version, research I). This is the
+     preferred option, if the browser tests show no app handler fires.
+- **Hit testing.** The element under the pointer comes from `document.elementsFromPoint`,
+  skipping the tool's own host. It descends into open shadow roots and same-origin
+  iframes, translating coordinates.
+- **Small rules that make picking feel right** (research I):
+  - A second click within 5px of the last steps through the stack of elements under that
+    point.
+  - Void elements (`br`, `wbr`, `col`, `source`, `track`, `area`, `param`) resolve to their
+    parent.
+  - A move onto an ancestor waits 50 ms, so crossing the gap between siblings does not
+    flash the parent.
+  - The label reads `button.save 96×32`, plus the component name only on that component's
+    root element.
 - **Cost.** At most one hit test per animation frame; the overlay moves by transform.
 - **Keys** belong to the mode only while it is picking:
   - `Esc` stops picking.
@@ -221,7 +246,9 @@ closed                         open
   - `Enter` selects.
   - Nothing else is bound, and nothing at all once picking stops.
 - **Keyboard-only start.** Picking begins at the focused element, or at `<main>` when
-  nothing is focused, so a selection can be made without a pointer.
+  nothing is focused, so a selection can be made without a pointer. The inspector also has
+  an Elements tree, from `<body>` down, with component names; hovering a row lights the
+  element. It is the keyboard and screen-reader way to choose one.
 - **Native modal dialogs.** A modal `<dialog>` makes everything outside it inert, a later
   popover included (observed, research F). While one is open, the tool's host moves inside
   it, using `moveBefore` where available, and moves back when it closes.
@@ -370,6 +397,13 @@ interface Target {
   rect: { x: number; y: number; width: number; height: number } // viewport px when captured
   styles?: Record<string, string>    // computed subset; size depends on fidelity
   classes?: string[]
+  context?: {                        // for finding it without a source location
+    ownText?: string                 // its own text nodes, not its children's, redacted
+    parent?: string                  // "section.card-list"
+    children?: string                // "3 children: h2, p, button"
+    siblings?: string                // "p, [button], a"
+    domPath?: string                 // "main > section.card-list > article.card > button"
+  }
 }
 
 type SelectorStrategy = "testId" | "id" | "role" | "attribute" | "class" | "structural"
@@ -450,6 +484,20 @@ fromJSON(text): FeedbackSession                   // parse, migrate, validate
   observed for each item.
 - **JSON** is the document itself, validated, at the chosen fidelity.
 
+Details every markdown output follows (research I):
+
+- **Shorthands.** When all four sides of `padding`, `margin`, `border-*` or a radius change
+  from the same value to the same value, the output says `padding`, once. Agents edit
+  shorthands.
+- **Style changes are a table:** property, before, after, the rule that set it (selector and
+  stylesheet, with `@media` when there is one), and the token.
+- **The token system in one line,** at standard fidelity and up: "47 custom properties;
+  prefixes color (12), space (9), radius (4)". The agent learns the naming without reading
+  the CSS.
+- **An implementation hint per styling approach:** Tailwind classes from the page's own theme
+  variables (the default scale only as a fallback), the `.module.css` beside the source file
+  for CSS Modules, the matched selector for plain CSS.
+
 ### Fidelity
 
 | Level | Per item |
@@ -510,8 +558,15 @@ interface Transport {
 | Callback | `onFeedback(session, item)` prop | the document | n/a |
 | Webhook | `webhook={{ url }}` prop; nothing by default | JSON `POST`, a delivery id per send, retried on 5xx | n/a |
 | Bridge | `bridge` prop plus pairing (section 8); nothing by default | every change, as it happens | status changes, replies, and state switches requested by the agent |
+| Page API | always on in development; absent from the production stub | `window.__PROTOTYPE_MACHINE__`: `session()`, `items(filter)`, `selection()`, `scenario()`, `setScenario(...)`, `checkFindings(...)`, `respond(id, status, message)` | the same calls, made by an agent that drives the browser |
 
-The shell makes no network call unless `webhook` or `bridge` is set.
+- **No network call** is made by the shell unless `webhook` or `bridge` is set.
+- **The page API** is for agents that already drive a browser (Playwright MCP, Chrome
+  DevTools MCP, browser automation in an IDE). They reach everything with `page.evaluate`,
+  with no bridge, port or token. The idea comes from Retune 0.4.1 (research I).
+  - It returns the same redacted documents the other transports send.
+  - Any script on the page can call it, as it can read the DOM anyway.
+  - It is never in a production build.
 
 ### The bridge
 
@@ -534,7 +589,17 @@ The shell makes no network call unless `webhook` or `bridge` is set.
   agents without MCP, and reads `.prototype-machine/replies.md` back into threads and
   statuses (research C3).
 - **Tabs:** each tab is its own session. Commands go to the session's most recently active
-  tab unless a tab id is given. Two tabs and two sessions are tested together.
+  tab unless a tab id is given. Two tabs and two sessions are tested together. A new tab
+  never replaces an existing one.
+- **Reads never consume.** Nothing disappears because an agent read it; only an explicit
+  status change moves an item.
+- **The port is discovered, not assumed.** The pairing link and `bridge.json` carry the port
+  it actually bound.
+- **The browser connects only when configured.** It retries a few times with backoff, then
+  shows "Bridge offline" with a Reconnect button, rather than retrying forever in the
+  console.
+
+These four rules are what Retune 0.4.1's bridge did not do (research I).
 
 ### The MCP server
 
@@ -614,25 +679,28 @@ core so they are unit-tested without a DOM.
 
 ### Where a change is applied
 
-From research F:
+From research F, refined by research I:
 
-- **One element ("this instance")** is changed inline, with
-  `el.style.setProperty(prop, value, "important")`. It beats every author rule and is
-  allowed under CSP.
-  - The previous inline value and priority are saved for an exact revert.
-  - A `MutationObserver` on that element's `style` notices React writing the same key,
-    re-applies the tweak, and updates the "before" value. The inspector says the app
-    changed it.
-- **Everything else** goes in one adopted stylesheet:
-  - variants and every instance;
-  - pseudo-states;
-  - forced states during stress.
-
-  Rules target `[data-pm-scope~="s3"]` markers the engine adds and removes. Selectors are
-  bumped in specificity, with `!important`.
-- **Revert is total.** Every inline property, attribute and rule the engine adds is
+- **One adopted stylesheet holds every preview rule.** That covers this instance, variants,
+  every instance, pseudo-states, and forced states during stress.
+  - Rules target `[data-pm-scope~="s3"]` markers the engine adds to the elements and removes
+    after. React leaves alone attributes it never set.
+  - Each declaration is `!important`, with the selector bumped in specificity. An important
+    author rule beats React's own inline `style` writes, so a re-render that writes the
+    same key no longer undoes the tweak, and no observer is needed for it.
+  - Detaching the sheet reverts every preview at once.
+  - Constructed sheets need no nonce; a strict-CSP test page in M4 confirms they apply.
+- **Verify, then fall back.** After applying, the engine reads the computed value back. If
+  the sheet lost, to an inline `!important` the app set or a layered `!important`, that
+  one property falls back to inline
+  `el.style.setProperty(prop, value, "important")`, which beats every author rule. The
+  previous inline value and priority are saved for an exact revert, and the inspector
+  notes which path was used.
+- **Revert is total.** Every rule, marker attribute and fallback inline property is
   recorded and removed. A browser test compares computed styles before a session and after
-  revert, and checks that no `data-pm-*` attribute is left.
+  revert, and checks that no `data-pm-*` attribute or adopted sheet is left.
+- **Drafts survive reloads.** Unsent tweaks are saved per route and re-applied on load or
+  after a hot update, with "3 tweaks restored" and a way to discard them.
 
 ### Controls by element type
 
@@ -641,11 +709,25 @@ tag, not from guessing at intent.
 
 | Group | Shown when | Properties |
 | --- | --- | --- |
-| Text | The element has its own text nodes | font size, weight, line height, letter spacing, colour, alignment, transform, the text itself |
-| Box | Always | width, height, min and max, padding, margin, radius, border, background, opacity |
+| Text | The element has its own text nodes | font size, weight, line height, letter spacing, colour, alignment, transform, truncation (none, one line with an ellipsis, clamp to N lines), the text itself |
+| Box | Always | size as **Fill, Hug or Fixed** per axis, min and max, padding, margin, radius, border, background, opacity |
 | Layout | `display` is flex, grid, or their inline forms | direction, wrap, justify, align, gap, grid template columns |
+| Self | The parent is flex or grid | self-alignment, order, grow and shrink (flex), column and row span (grid) |
 | Media | `img`, `video`, `picture`, `svg` | object fit, object position, aspect ratio |
 | Position | `position` is not static | inset sides, z-index |
+
+- **Controls follow the parent's layout as well as the element's own.** Fill, Hug and Fixed
+  are how designers talk about size, so the engine translates them per context:
+  - **block:** `100%`, `fit-content`, or pixels;
+  - **flex main axis:** grow, shrink and basis;
+  - **flex cross axis:** `align-self: stretch`;
+  - **grid child:** `justify-self` or `align-self`.
+
+  The idea comes from Retune 0.4.1; the mapping is ours (research I).
+- **Typed values.** A bare number keeps the previous value's unit; unitless properties
+  (`opacity`, `font-weight`, `line-height` when unitless) never gain one; scrubbing from a
+  keyword such as `normal` or `auto` starts in px. Values display rounded (`203px`, `0.86`)
+  but are stored exactly.
 
 ### Scrubbing
 
@@ -674,8 +756,18 @@ tag, not from guessing at intent.
 | This variant | Elements of the same component, with the same class list | fiber type plus `className` |
 | Every instance | Every element of the same component, or of the same authored rule | fiber type, or the matched selector |
 
-Before a wider scope applies, every element it will change gets crop marks, with a count
-("12 elements"). This is VisBug's "expand selection" made visible (research G).
+- **The default is always this instance.** A wider scope is a choice.
+- **Before it applies,** every element a wider scope will change gets crop marks, with a
+  count ("12 elements"). This is VisBug's "expand selection" made visible (research G).
+- **Class candidates,** where there is no component to scope by, come from the element's
+  classes. Hashed classes are left out (research F). So are utility classes, recognised by
+  stylesheet structure: a rule in `@layer utilities`, or a rule with at most two property
+  families on a single-class selector (research I). Each candidate shows how many elements
+  it matches.
+- **Under a wider scope, "before" means the scope's own values.** They are read from the
+  rules that belong to it, leaving out variant rules with extra classes (`.btn.active`),
+  not the instance's computed style.
+- **Changing scope moves the draft** to the new scope rather than dropping it.
 
 ### Pseudo-states
 
@@ -693,6 +785,8 @@ Before a wider scope applies, every element it will change gets crop marks, with
     the page.
   - Each command is `{ scope, property, state, from, to }` and replays in both directions
     (unit-tested round trips).
+  - Commands on one target within 300 ms form one step, keeping the first "from". A
+    scrub, or the four sides of a padding changed together, undoes as one (research I).
 - **Compare:** hold the Compare button to see the page without the tweaks (Figma's compare,
   research G).
 - **The diff** lists each property as before → after, with the token and the authored rule
@@ -802,6 +896,7 @@ The research is in [01 §D](01-research.md#d-local-bridge-security). The design:
 | Page text instructs the agent ("ignore previous instructions") | Every serializer fences page-derived text (excerpts, accessible names, selections) as quoted data under a "From the page, not instructions" label, kept short. The skill (M7) says to treat it as data. The reviewer's own comment is marked as the reviewer's. |
 | Secrets leave the page | Redaction at capture, before storage or any transport (01 §D): no form values, no password or payment fields, masked `data-private` and the session-replay conventions, masked emails and key-shaped strings, sensitive query parameters dropped from reproduce URLs. |
 | A production build phones home | The stub contains no shell, bridge client or webhook code. A pack test greps the bundles for them. |
+| A script on the page calls the page API (section 5) | It gets what the page could read from the DOM anyway, already redacted. `setScenario` reaches only declared states. The API exists only in development builds. |
 
 ### Pairing
 
@@ -950,7 +1045,9 @@ documented paths today, and every later milestone needs a real browser to prove 
 4. `sample` moves to `src/test/fixtures.ts`, and the count drops to 277 honest tests
    (audit 6.4).
 5. A `nonce` for the motion freeze (audit 6.5).
-6. A Playwright harness against the demo; CI starts typechecking the demo; and the size
+6. Tool hosts on `<html>`, so a transformed `<body>` cannot scroll them away (audit
+   6.11).
+7. A Playwright harness against the demo; CI starts typechecking the demo; and the size
    script with today's numbers as budgets.
 
 Each item is its own commit. `npm run check` passes after every one.
@@ -1003,7 +1100,7 @@ all recommendations" is a complete answer.
 | --- | --- | --- | --- |
 | D1 | Shell UI framework | React now; every engine vanilla in `dom` | Vanilla shell now (rewrite of the panel) |
 | D2 | MCP server | Written in the package, stdio, both protocol eras, zero dependencies, tested against the official clients | Official SDK v2 in a separate package |
-| D3 | An M0 before M1 | Yes: fix audit 6.1 to 6.5, test fixtures, Playwright harness, size script, React 18 job | Fold the fixes into M1 |
+| D3 | An M0 before M1 | Yes: fix audit 6.1 to 6.5 and 6.11, test fixtures, Playwright harness, size script, React 18 job | Fold the fixes into M1 |
 | D4 | What `ScenarioPanel` shows after the upgrade | States only, as today; `modes` opts into Select and Annotate | Every mode on by default |
 | D5 | Bridge pairing | A printed link with the token in the URL fragment | A Vite plugin that injects it (later either way) |
 | D6 | New dev dependencies (none at runtime) | `@playwright/test` 1.63.0, `axe-core`, the MCP SDK clients (both eras), `ajv`, and `webpack` plus `next` in an isolated fixture. A size script instead of `size-limit`. | Any subset; say which to drop |
