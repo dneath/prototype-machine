@@ -518,3 +518,24 @@ proportional to app activity, not zero.
   first.
 - **CI** (`.github/workflows/ci.yml`) runs Node 20, 22, 24 on one React version, has no
   browser job, no size budget, and builds but never typechecks the demo.
+
+### 6.11 Fixed hosts scroll away under a transformed `<body>`
+
+**P1, reproduced** (added after the checkpoint). Every tool host is appended to
+`<body>` (`react/shadow.ts:131`). A `transform`, `filter` or `contain: paint` on
+`<body>` makes `<body>` the containing block for its fixed descendants, and the host's
+own `position: fixed !important` cannot override that. Tested in Chromium 153 with an
+element carrying the host's inline style:
+
+| `<body>` has | Host in `<body>`, after a 500px scroll | Host in `<html>` |
+| --- | --- | --- |
+| nothing | top 0 | top 0 |
+| `transform: translateZ(0)` | **top −500** | top 0 |
+| `filter: blur(0)` | **top −500** | top 0 |
+| `contain: paint` | **top −500** | top 0 |
+
+`translateZ(0)` on `<body>` is a common hack, so on those pages the panel, the switcher
+and the canvas chrome scroll off the screen. `api.md` says page rules "cannot move or
+hide" the host; this one does. Fix: append hosts to `<html>`, and watch `<html>`'s child
+list to put one back. Found by reading Retune 0.4.1 (MIT), which mounts there
+([01 §I](01-research.md#i-retune-041-read-under-its-mit-license)).
